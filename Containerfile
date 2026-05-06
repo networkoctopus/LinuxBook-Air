@@ -3,11 +3,8 @@ FROM scratch AS ctx
 COPY build_files /
 
 # Pre-built kmod RPMs from Universal Blue's daily-built akmods images
-# Tag format: <kernel-flavor>-<fedora-version>
-# - wl (broadcom) is in the 'common' stream
-# - facetimehd is in the 'extra' stream
+# 'common' stream includes wl (broadcom)
 FROM ghcr.io/ublue-os/akmods:main-44 AS akmods-common
-FROM ghcr.io/ublue-os/akmods-extra:main-44 AS akmods-extra
 
 # Base Image - Fedora Silverblue 44 with GNOME 50
 FROM quay.io/fedora/fedora-silverblue:44
@@ -30,16 +27,13 @@ FROM quay.io/fedora/fedora-silverblue:44
 # RUN rm /opt && mkdir /opt
 
 ### KMODS
-## Install pre-built kernel modules from ublue-os/akmods images.
-## This avoids running akmods/akmod build scripts as root at image build time,
-## which fails in a container context.
+## wl (broadcom): installed via ublue akmods pre-built image (avoids akmod-wl root build failure)
+## facetimehd: installed via COPR in build.sh (akmods-extra image no longer publicly published)
 COPY --from=akmods-common /rpms/ /tmp/rpms/
-COPY --from=akmods-extra /rpms/ /tmp/rpms-extra/
 
 RUN dnf install -y /tmp/rpms/ublue-os/ublue-os-akmods*.rpm && \
     dnf install -y /tmp/rpms/kmods/kmod-wl*.rpm && \
-    dnf install -y /tmp/rpms-extra/kmods/kmod-facetimehd*.rpm && \
-    rm -rf /tmp/rpms /tmp/rpms-extra
+    rm -rf /tmp/rpms
 
 ### MODIFICATIONS
 ## make modifications desired in your image and install packages by modifying the build.sh script
