@@ -17,41 +17,41 @@ dnf5 install -y \
 #dnf5 -y copr disable mulderje/facetimehd-kmod
 
 # this installs a package from fedora repos
-dnf5 install -y tmux
+#dnf5 install -y tmux
 
 # Install Toshy native dependencies - extracted dynamically from upstream source
-TOSHY_TMP=$(mktemp -d)
-git clone --depth=1 https://github.com/RedBearAK/Toshy.git "$TOSHY_TMP/toshy"
-
-TOSHY_PKGS=$(python3 -c "
-import ast, re, sys
-
-with open('$TOSHY_TMP/toshy/setup_toshy.py') as f:
-    content = f.read()
-
-match = re.search(r'pkg_groups_map\s*=\s*(\{.*?\n\})', content, re.DOTALL)
-if not match:
-    print('ERROR: Could not find pkg_groups_map', file=sys.stderr)
-    sys.exit(1)
-
-pkg_groups_map = ast.literal_eval(match.group(1))
-pkgs = pkg_groups_map.get('fedora-based')
-if not pkgs:
-    print('ERROR: Could not find fedora-based key', file=sys.stderr)
-    sys.exit(1)
-
-print(' '.join(pkgs))
-")
-
-if [[ -z "$TOSHY_PKGS" ]]; then
-    echo "ERROR: Failed to extract Toshy package list from upstream source" >&2
-    exit 1
-fi
-
-echo "Installing Toshy deps: $TOSHY_PKGS"
-dnf5 install -y --skip-unavailable $TOSHY_PKGS
-
-rm -rf "$TOSHY_TMP"
+#TOSHY_TMP=$(mktemp -d)
+#git clone --depth=1 https://github.com/RedBearAK/Toshy.git "$TOSHY_TMP/toshy"
+#
+#TOSHY_PKGS=$(python3 -c "
+#import ast, re, sys
+#
+#with open('$TOSHY_TMP/toshy/setup_toshy.py') as f:
+#    content = f.read()
+#
+#match = re.search(r'pkg_groups_map\s*=\s*(\{.*?\n\})', content, re.DOTALL)
+#if not match:
+#    print('ERROR: Could not find pkg_groups_map', file=sys.stderr)
+#    sys.exit(1)
+#
+#pkg_groups_map = ast.literal_eval(match.group(1))
+#pkgs = pkg_groups_map.get('fedora-based')
+#if not pkgs:
+#    print('ERROR: Could not find fedora-based key', file=sys.stderr)
+#    sys.exit(1)
+#
+#print(' '.join(pkgs))
+#")
+#
+#if [[ -z "$TOSHY_PKGS" ]]; then
+#    echo "ERROR: Failed to extract Toshy package list from upstream source" >&2
+#    exit 1
+#fi
+#
+#echo "Installing Toshy deps: $TOSHY_PKGS"
+#dnf5 install -y --skip-unavailable $TOSHY_PKGS
+#
+#rm -rf "$TOSHY_TMP"
 
 # Use a COPR Example:
 #
