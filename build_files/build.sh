@@ -19,39 +19,29 @@ dnf5 install -y \
 # this installs a package from fedora repos
 dnf5 install -y tmux
 
-# Install Toshy native dependencies ahead of the installer run
-# (mirroring what setup_toshy.py would install for Fedora)
+# Install Toshy native dependencies
 dnf5 install -y \
     cairo-devel \
+    cairo-gobject-devel \
+    dbus \
     dbus-devel \
-    dbus-python \
-    evdev-utils \
+    evtest \
     gcc \
     git \
     gobject-introspection-devel \
-    inotify-tools \
     libappindicator-gtk3 \
+    libinput-utils \
+    libjpeg-turbo-devel \
     libnotify \
+    libxkbcommon-devel \
     python3-dbus \
     python3-devel \
     python3-pip \
-    python3-tk \
-    python3-venv \
+    python3-tkinter \
+    systemd-devel \
+    wayland-devel \
+    xorg-x11-server-utils \
     zenity
-
-# Install Toshy (Mac-like keyboard shortcuts keymapper)
-# --override-distro fedora: forces plain Fedora/dnf mode, avoiding rpm-ostree detection
-# --skip-native: native deps already installed above
-# User-space components (systemd user services, tray icon) are per-user and must
-# be finalised at first login by running: toshy-systemd-setup
-TOSHY_TMP=$(mktemp -d)
-git clone --depth=1 https://github.com/RedBearAK/Toshy.git "$TOSHY_TMP/toshy"
-cd "$TOSHY_TMP/toshy"
-python3 ./setup_toshy.py install \
-    --override-distro fedora \
-    --skip-native
-cd /
-rm -rf "$TOSHY_TMP"
 
 # Use a COPR Example:
 #
