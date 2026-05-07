@@ -26,8 +26,10 @@ FROM ghcr.io/ublue-os/silverblue-main:44
 ## facetimehd: installed via COPR in build.sh (akmods-extra image no longer publicly published)
 COPY --from=ghcr.io/ublue-os/akmods:main-44 / /tmp/akmods-common
 RUN find /tmp/akmods-common
-RUN dnf install -y /tmp/rpms/ublue-os/ublue-os-akmods*.rpm && \
-    dnf install -y /tmp/rpms/kmods/kmod-wl*.rpm
+RUN dnf install -y \
+    /tmp/akmods-common/rpms/ublue-os/ublue-os-akmods-addons*.rpm \
+    /tmp/akmods-common/rpms/common/broadcom-wl*.rpm \
+    /tmp/akmods-common/rpms/kmods/kmod-wl*.rpm
 
 ### MODIFICATIONS
 ## make modifications desired in your image and install packages by modifying the build.sh script
