@@ -24,7 +24,7 @@ FROM ghcr.io/ublue-os/silverblue-main:44
 ### KMODS
 ## wl (broadcom): installed via ublue akmods pre-built image (avoids akmod-wl root build failure)
 ## facetimehd: installed via COPR in build.sh (akmods-extra image no longer publicly published)
-COPY --from=ghcr.io/ublue-os/akmods:coreos-testing-44 / /tmp/akmods-common
+COPY --from=ghcr.io/ublue-os/akmods:main-44 / /tmp/akmods-common
 RUN find /tmp/akmods-common
 RUN dnf install -y /tmp/rpms/ublue-os/ublue-os-akmods*.rpm && \
     dnf install -y /tmp/rpms/kmods/kmod-wl*.rpm
