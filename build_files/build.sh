@@ -36,6 +36,10 @@ dnf5 install -y --skip-unavailable \
     xorg-x11-utils \
     zenity
 
+#cleanup
+dnf5 autoremove -y && \
+rm -rf /run/dnf
+
 # Install Toshy native dependencies - extracted dynamically from upstream source
 #TOSHY_TMP=$(mktemp -d)
 #git clone --depth=1 https://github.com/RedBearAK/Toshy.git "$TOSHY_TMP/toshy"
