@@ -43,7 +43,7 @@ RUN --mount=type=cache,dst=/var/cache \
     dnf5 -y mark user facetimehd facetimehd-firmware && \
     dnf5 remove -y akmod-facetimehd akmods kmodtool kernel-devel kernel-devel-matched kernel-headers && \
     dnf5 autoremove -y && \
-    rm -rf /var/cache/akmods
+    rm -rf /var/cache/akmods /run/akmods /run/dnf
 
 ### MODIFICATIONS
 COPY --from=ctx /usr/libexec/toshy-first-login-setup.sh /usr/libexec/toshy-first-login-setup.sh
