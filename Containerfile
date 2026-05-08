@@ -40,9 +40,10 @@ RUN --mount=type=cache,dst=/var/cache \
     echo "=== Builder kernel: $(uname -r) ===" && \
     echo "=== Target kernel: $(rpm -q --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}' kernel-devel) ===" && \
     akmods --force --kernels $(rpm -q --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}' kernel-devel) && \
-    KMOD_RPM=$(find /var/cache/akmods -name "kmod-facetimehd*.rpm" | head -1) && \
-    echo "=== Found kmod RPM: ${KMOD_RPM} ===" && \
-    dnf5 install -y "${KMOD_RPM}"
+    dnf5 -y mark user facetimehd facetimehd-firmware && \
+    dnf5 remove -y akmod-facetimehd akmods kmodtool kernel-devel kernel-devel-matched kernel-headers && \
+    dnf5 autoremove -y && \
+    rm -rf /var/cache/akmods
 
 ### MODIFICATIONS
 COPY --from=ctx /usr/libexec/toshy-first-login-setup.sh /usr/libexec/toshy-first-login-setup.sh
