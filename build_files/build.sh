@@ -69,6 +69,8 @@ install_extension 5060 "xremap@k0kubun.com"
 install_extension 1460 "Vitals@CoreCoding.com"
 install_extension 19   "user-theme@gnome-shell-extensions.gcampax.github.com"
 install_extension 307  "dash-to-dock@micxgx.gmail.com"
+# Fix permissions so all users can read extensions
+chmod -R a+rX /usr/share/gnome-shell/extensions/
 
 ### Enable extensions system-wide via dconf
 mkdir -p /etc/dconf/profile /etc/dconf/db/local.d

@@ -20,8 +20,7 @@ trap 'rm -rf "$TOSHY_TMP"' EXIT
 git clone --depth=1 https://github.com/RedBearAK/Toshy.git "$TOSHY_TMP/toshy"
 cd "$TOSHY_TMP/toshy"
 
-SESSION_TYPE=wayland yes | python3 ./setup_toshy.py install \
-    --override-distro silverblue \
+SESSION_TYPE=wayland python3 ./setup_toshy.py install \
     --skip-native
 
 EXIT_CODE=$?
