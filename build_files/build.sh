@@ -74,6 +74,14 @@ install_extension 307  "dash-to-dock@micxgx.gmail.com"
 # Fix permissions so all users can read extensions
 chmod -R a+rX /usr/share/gnome-shell/extensions/
 
+# Compile GSettings schemas for extensions that need it
+for schema_dir in /usr/share/gnome-shell/extensions/*/schemas; do
+    if ls "$schema_dir"/*.gschema.xml &>/dev/null; then
+        echo "Compiling schemas in $schema_dir"
+        glib-compile-schemas "$schema_dir"
+    fi
+done
+
 ### Enable extensions system-wide via dconf
 mkdir -p /etc/dconf/profile /etc/dconf/db/local.d
 printf 'user-db:user\nsystem-db:local\n' > /etc/dconf/profile/user
@@ -85,7 +93,7 @@ EOF
 dconf update
 
 #cleanup
-dnf5 autoremove -y && \
+#dnf5 autoremove -y && \
 rm -rf /run/dnf
 
 # Install Toshy native dependencies - extracted dynamically from upstream source
