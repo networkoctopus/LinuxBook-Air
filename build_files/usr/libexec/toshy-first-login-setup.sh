@@ -21,7 +21,7 @@ git clone --depth=1 https://github.com/RedBearAK/Toshy.git "$TOSHY_TMP/toshy"
 cd "$TOSHY_TMP/toshy"
 
 SESSION_TYPE=wayland python3 ./setup_toshy.py install \
-    --skip-native
+    --override-distro silverblue
 
 EXIT_CODE=$?
 
