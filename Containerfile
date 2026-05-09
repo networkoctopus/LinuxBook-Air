@@ -57,6 +57,50 @@ RUN chmod +x /usr/libexec/toshy-first-login-setup.sh \
  && ln -sf /usr/lib/systemd/user/toshy-first-login-setup.service \
            /usr/lib/systemd/user/graphical-session.target.wants/toshy-first-login-setup.service
 
+### Add gnome extenstions to the image
+RUN /usr/bin/bash <<'EOF'
+set -euo pipefail
+
+GNOME_VERSION=$(rpm -q --queryformat '%{VERSION}' gnome-shell | cut -d. -f1)
+EXTENSIONS_DIR="/usr/share/gnome-shell/extensions"
+mkdir -p "$EXTENSIONS_DIR"
+
+install_extension() {
+    local ext_id="$1"
+    local uuid="$2"
+
+    echo "Installing extension $uuid (ID: $ext_id) for GNOME ${GNOME_VERSION}..."
+
+    local version_tag
+    version_tag=$(curl -sf "https://extensions.gnome.org/extension-info/?pk=${ext_id}&shell_version=${GNOME_VERSION}" \
+        | python3 -c 'import sys,json; print(json.load(sys.stdin)["version_tag"])')
+
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    curl -sL "https://extensions.gnome.org/download-extension/${uuid}.shell-extension.zip?version_tag=${version_tag}" \
+        -o "$tmpdir/ext.zip"
+    unzip -q "$tmpdir/ext.zip" -d "${EXTENSIONS_DIR}/${uuid}"
+    rm -rf "$tmpdir"
+
+    echo "Done: $uuid"
+}
+
+install_extension 615  "appindicatorsupport@rgcjonas.gmail.com"
+install_extension 5060 "xremap@k0kubun.com"
+install_extension 1460 "Vitals@CoreCoding.com"
+install_extension 19   "user-theme@gnome-shell-extensions.gcampax.github.com"
+install_extension 307  "dash-to-dock@micxgx.gmail.com"
+
+EOF
+
+RUN cat > /usr/share/glib-2.0/schemas/99-custom-extensions.gschema.override << 'EOF'
+[org.gnome.shell]
+enabled-extensions=['appindicatorsupport@rgcjonas.gmail.com', 'xremap@k0kubun.com', 'Vitals@CoreCoding.com', 'user-theme@gnome-shell-extensions.gcampax.github.com', 'dash-to-dock@micxgx.gmail.com']
+disable-user-extensions=false
+EOF
+
+RUN glib-compile-schemas /usr/share/glib-2.0/schemas
+
 ### Stop gnome software from trying to update packages and causing conflicts with bootc's deployment process. This is done by removing the dnf5 plugin for gnome software, and masking packagekit to prevent it from being started as a dependency of the plugin.
 RUN rm -f /usr/lib64/gnome-software/plugins-*/libgs_plugin_dnf5.so && \
     systemctl mask packagekit && \

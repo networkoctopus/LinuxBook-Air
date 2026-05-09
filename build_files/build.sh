@@ -37,7 +37,7 @@ dnf5 install -y --skip-unavailable \
     zenity
 
 # Install theme native dependencies
-dnf5 install -y sassc glib2-devel
+dnf5 install -y gnome-tweaks sassc glib2-devel
 
 #cleanup
 dnf5 autoremove -y && \
