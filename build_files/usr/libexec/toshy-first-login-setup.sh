@@ -7,7 +7,10 @@ SENTINEL="$HOME/.config/toshy/.image-setup-done"
 clear
 echo "╔══════════════════════════════════════════════╗"
 echo "║          Toshy First-Time Setup              ║"
-echo "║   Mac-like keyboard shortcuts for Linux      ║"
+echo "║   Keymapper config to make Linux keyboard    ║"  
+echo "║   shortcuts work like a 'Tosh! And more.     ║"
+echo "║          (A Kinto alternative.)              ║"
+echo "║     https://github.com/RedBearAK/Toshy       ║"
 echo "╚══════════════════════════════════════════════╝"
 echo ""
 echo "This will run once and takes a few minutes."
@@ -21,7 +24,8 @@ git clone --depth=1 https://github.com/RedBearAK/Toshy.git "$TOSHY_TMP/toshy"
 cd "$TOSHY_TMP/toshy"
 
 SESSION_TYPE=wayland python3 ./setup_toshy.py install \
-    --override-distro silverblue
+    --override-distro silverblue \
+    --skip-native
 
 EXIT_CODE=$?
 

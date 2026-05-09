@@ -18,6 +18,8 @@ dnf5 install -y --skip-unavailable \
     cairo-gobject-devel \
     dbus \
     dbus-devel \
+    dbus-daemon \
+    dbus-tools \
     evtest \
     gcc \
     git \
