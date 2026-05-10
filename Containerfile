@@ -71,7 +71,7 @@ COPY --from=ctx /power/macbook-power.toml /usr/lib/bootc/kargs.d/macbook-power.t
 COPY --from=ctx /power/thunderbolt-blacklist.conf /etc/modprobe.d/thunderbolt-blacklist.conf
 
 ### Thunderbolt runtime PM udev rule (picked up at first boot)
-COPY --from=ctx /power/thunderbolt-pm.rules /etc/udev/rules.d/99-thunderbolt-pm.rules
+COPY --from=ctx /power/99-thunderbolt-pm.rules /etc/udev/rules.d/99-thunderbolt-pm.rules
 
 ### Enable WiFi powersave by default
 COPY --from=ctx /power/default-wifi-powersave-on.conf /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf
@@ -90,7 +90,7 @@ RUN systemctl enable aspm-tune.service
 COPY --from=ctx /power/aspm-tune-resume.service /etc/systemd/system/aspm-tune-resume.service
 RUN systemctl enable aspm-tune-resume.service
 
-
+### Run Build Script
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
