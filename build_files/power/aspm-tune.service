@@ -1,0 +1,12 @@
+[Unit]
+Description=ASPM tuning script
+After=multi-user.target systemd-udev-settle.service
+Wants=systemd-udev-settle.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/aspm-tune.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

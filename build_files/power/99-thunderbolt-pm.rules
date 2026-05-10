@@ -1,0 +1,6 @@
+ACTION=="add", SUBSYSTEM=="pci", ATTR{address}=="0000:05:00.0", ATTR{power/control}="auto"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{address}=="0000:06:00.0", ATTR{power/control}="auto"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{address}=="0000:06:03.0", ATTR{power/control}="auto"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{address}=="0000:06:04.0", ATTR{power/control}="auto"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{address}=="0000:06:05.0", ATTR{power/control}="auto"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{address}=="0000:07:00.0", ATTR{power/control}="auto"

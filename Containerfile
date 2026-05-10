@@ -46,9 +46,9 @@ RUN --mount=type=cache,dst=/var/cache \
     rm -rf /var/cache/akmods /run/akmods /run/dnf
 
 ### Toshy first login setup
-COPY --from=ctx /usr/libexec/toshy-first-login-setup.sh   /usr/libexec/toshy-first-login-setup.sh
-COPY --from=ctx /usr/libexec/toshy-first-login-launch.sh  /usr/libexec/toshy-first-login-launch.sh
-COPY --from=ctx /usr/lib/systemd/user/toshy-first-login-setup.service \
+COPY --from=ctx /toshy/toshy-first-login-setup.sh   /usr/libexec/toshy-first-login-setup.sh
+COPY --from=ctx /toshy/toshy-first-login-launch.sh  /usr/libexec/toshy-first-login-launch.sh
+COPY --from=ctx /toshy/toshy-first-login-setup.service \
                 /usr/lib/systemd/user/toshy-first-login-setup.service
 
 RUN chmod +x /usr/libexec/toshy-first-login-setup.sh \
@@ -61,6 +61,35 @@ RUN chmod +x /usr/libexec/toshy-first-login-setup.sh \
 RUN rm -f /usr/lib64/gnome-software/plugins-*/libgs_plugin_dnf5.so && \
     systemctl mask packagekit && \
     echo "gnome-software dnf5 plugin removed"
+
+
+### Power improvements for MacBooks
+### Kernel argument: tell firmware it's not a Mac (better ACPI/Thunderbolt paths)
+COPY --from=ctx /power/macbook-power.toml /usr/lib/bootc/kargs.d/macbook-power.toml
+
+### Disable Thunderbolt via modprobe blacklist (initramfs rebuilt at deploy time)
+COPY --from=ctx /power/thunderbolt-blacklist.conf /etc/modprobe.d/thunderbolt-blacklist.conf
+
+### Thunderbolt runtime PM udev rule (picked up at first boot)
+COPY --from=ctx /power/thunderbolt-pm.rules /etc/udev/rules.d/99-thunderbolt-pm.rules
+
+### Enable WiFi powersave by default
+COPY --from=ctx /power/default-wifi-powersave-on.conf /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf
+
+### powertop autotune on boot
+COPY --from=ctx /power/powertop-autotune.service /etc/systemd/system/powertop-autotune.service
+RUN systemctl enable powertop-autotune.service
+
+### ASPM tuning on boot
+COPY --from=ctx /power/aspm-tune.sh /usr/local/bin/aspm-tune.sh
+RUN chmod +x /usr/local/bin/aspm-tune.sh
+COPY --from=ctx /power/aspm-tune.service /etc/systemd/system/aspm-tune.service
+RUN systemctl enable aspm-tune.service
+
+### ASPM re-tuning on resume
+COPY --from=ctx /power/aspm-tune-resume.service /etc/systemd/system/aspm-tune-resume.service
+RUN systemctl enable aspm-tune-resume.service
+
 
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \
