@@ -5,7 +5,7 @@ Wants=systemd-udev-settle.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/aspm-tune.sh
+ExecStart=/usr/bin/aspm-tune.sh
 RemainAfterExit=yes
 
 [Install]

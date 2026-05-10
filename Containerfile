@@ -81,8 +81,8 @@ COPY --from=ctx /power/powertop-autotune.service /etc/systemd/system/powertop-au
 RUN systemctl enable powertop-autotune.service
 
 ### ASPM tuning on boot
-COPY --from=ctx /power/aspm-tune.sh /usr/local/bin/aspm-tune.sh
-RUN chmod +x /usr/local/bin/aspm-tune.sh
+COPY --from=ctx /power/aspm-tune.sh /usr/bin/aspm-tune.sh
+RUN chmod +x /usr/bin/aspm-tune.sh
 COPY --from=ctx /power/aspm-tune.service /etc/systemd/system/aspm-tune.service
 RUN systemctl enable aspm-tune.service
 
@@ -91,8 +91,8 @@ COPY --from=ctx /power/aspm-tune-resume.service /etc/systemd/system/aspm-tune-re
 RUN systemctl enable aspm-tune-resume.service
 
 ### Power audit script to troubleshoot power issues (not enabled by default, can be run manually)
-COPY --from=ctx /power/power-audit.sh /usr/local/bin/power-audit.sh
-RUN chmod +x /usr/local/bin/power-audit.sh
+COPY --from=ctx /power/power-audit.sh /usr/bin/power-audit.sh
+RUN chmod +x /usr/bin/power-audit.sh
 
 ### Run Build Script
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \

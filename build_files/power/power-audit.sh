@@ -59,7 +59,7 @@ FILES=(
     "/etc/systemd/system/powertop-autotune.service"
     "/etc/systemd/system/aspm-tune.service"
     "/etc/systemd/system/aspm-tune-resume.service"
-    "/usr/local/bin/aspm-tune.sh"
+    "/usr/bin/aspm-tune.sh"
 )
 
 for f in "${FILES[@]}"; do

@@ -4,7 +4,7 @@ After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/aspm-tune.sh
+ExecStart=/usr/bin/aspm-tune.sh
 RemainAfterExit=no
 
 [Install]
