@@ -100,6 +100,15 @@ RUN chmod +x /usr/bin/power-audit.sh
 COPY --from=ctx /fixes/restore-backlight.sh /usr/lib/systemd/system-sleep/restore-backlight.sh
 RUN chmod +x /usr/lib/systemd/system-sleep/restore-backlight.sh
 
+### Broadcom wl WiFi interface reset on suspend/resume
+COPY --from=ctx /fixes/wl-suspend.service /usr/lib/systemd/system/wl-suspend.service
+COPY --from=ctx /fixes/wl-suspend.sh /usr/bin/wl-suspend.sh
+RUN chmod +x /usr/bin/wl-suspend.sh && \
+    systemctl enable wl-suspend.service && \
+    echo "wl-suspend fix enabled"       
+
+### FacetimeHD: silence optional firmware load error
+RUN ln -sf firmware.bin /usr/lib/firmware/facetimehd/1871_01XX.dat    
 
 ### Run Build Script
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
