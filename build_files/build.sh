@@ -102,6 +102,7 @@ make
 make install
 # Ensure service file is copied to the correct location for systemd
 cp -v mbpfan.service /usr/lib/systemd/system/mbpfan.service
+systemctl enable mbpfan.service
 cd /
 rm -rf /tmp/mbpfan
 
