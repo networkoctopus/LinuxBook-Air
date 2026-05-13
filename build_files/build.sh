@@ -14,18 +14,6 @@ dnf5 install -y intel-gpu-tools powertop
 # Enable powertop --autotune on startup
 systemctl enable powertop.service
 
-# ── Install mbpfan ──
-dnf5 install -y gcc make
-echo "▸ Installing mbpfan v2.4.0 from source"
-git clone --depth 1 --branch v2.4.0 https://github.com/linux-on-mac/mbpfan.git /tmp/mbpfan
-cd /tmp/mbpfan
-make
-make install
-# Ensure service file is copied to the correct location for systemd
-cp -v mbpfan.service /usr/lib/systemd/system/mbpfan.service
-cd /
-rm -rf /tmp/mbpfan
-
 # Install Toshy native dependencies
 dnf5 install -y --skip-unavailable \
     cairo-devel \
@@ -106,8 +94,19 @@ disable-user-extensions=false
 EOF
 dconf update
 
+# ── Install mbpfan ──
+echo "▸ Installing mbpfan v2.4.0 from source"
+git clone --depth 1 --branch v2.4.0 https://github.com/linux-on-mac/mbpfan.git /tmp/mbpfan
+cd /tmp/mbpfan
+make
+make install
+# Ensure service file is copied to the correct location for systemd
+cp -v mbpfan.service /usr/lib/systemd/system/mbpfan.service
+cd /
+rm -rf /tmp/mbpfan
+
 #cleanup
-#dnf5 autoremove -y && \
+dnf5 autoremove -y && \
 rm -rf /run/dnf
 
 # Install Toshy native dependencies - extracted dynamically from upstream source
