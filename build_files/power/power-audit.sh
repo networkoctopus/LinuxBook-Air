@@ -163,7 +163,7 @@ for svc in "${SERVICES[@]}"; do
     active=$(systemctl is-active "$svc" 2>/dev/null)
 
     if [[ "$enabled" == "enabled" ]]; then
-        if [[ "$svc" == "aspm-tune-resume.service" ]]; then
+        if [[ "$svc" == "powertop.service" || "$svc" == "aspm-tune-resume.service" ]]; then
             # oneshot resume service — inactive is normal
             if [[ "$active" == "inactive" || "$active" == "active" ]]; then
                 pass "$svc — enabled (oneshot resume, currently $active)"
