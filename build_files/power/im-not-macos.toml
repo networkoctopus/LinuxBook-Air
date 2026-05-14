@@ -1,1 +1,1 @@
-kargs = ["acpi_osi=!Darwin acpi_backlight=vendor"]
+kargs = ["acpi_osi=!Darwin"]
