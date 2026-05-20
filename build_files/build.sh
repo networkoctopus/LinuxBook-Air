@@ -140,7 +140,8 @@ fi
 #cleanup
 dnf5 autoremove -y && \
 rm -rf /run/dnf
-
+rm -rf /var/cache/libdnf5 && \
+    truncate -s 0 /var/log/dnf5.log
 
 # Install Toshy native dependencies - extracted dynamically from upstream source
 #TOSHY_TMP=$(mktemp -d)

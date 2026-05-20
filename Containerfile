@@ -31,6 +31,7 @@ RUN --mount=type=cache,dst=/var/cache \
     /tmp/akmods-common/rpms/common/broadcom-wl*.rpm \
     /tmp/akmods-common/rpms/kmods/kmod-wl*.rpm && \
     rm -rf /tmp/akmods-common /run/akmods /run/dnf
+
 ## facetimehd
 RUN --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
@@ -44,6 +45,10 @@ RUN --mount=type=cache,dst=/var/cache \
     dnf5 remove -y akmod-facetimehd akmods kmodtool kernel-devel kernel-devel-matched kernel-headers && \
     dnf5 autoremove -y && \
     rm -rf /var/cache/akmods /run/akmods /run/dnf
+
+##Akmods user cleanup   
+RUN userdel akmods 2>/dev/null || true && \
+    groupdel akmods 2>/dev/null || true
 
 ### Toshy first login setup
 COPY --from=ctx /toshy/toshy-first-login-setup.sh   /usr/libexec/toshy-first-login-setup.sh
