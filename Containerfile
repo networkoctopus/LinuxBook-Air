@@ -118,7 +118,7 @@ RUN chmod +x /usr/lib/systemd/system-sleep/fix-macbook-wakeup
 ### Add Ublue automatic updates process uupd
 RUN dnf copr enable ublue-os/packages && \
     dnf install -y uupd && \
-    systemctl enable --now uupd.timer && \
+    systemctl enable uupd.timer && \
     echo "Ublue automatic updates enabled"
 
 ### Disable old rpm-ostree automatic updates process
