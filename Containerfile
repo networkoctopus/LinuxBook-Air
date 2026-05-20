@@ -58,10 +58,9 @@ RUN chmod +x /usr/libexec/toshy-first-login-setup.sh \
            /usr/lib/systemd/user/graphical-session.target.wants/toshy-first-login-setup.service
 
 ### Stop gnome software from trying to update packages and causing conflicts with bootc's deployment process. This is done by removing the dnf5 plugin for gnome software, and masking packagekit to prevent it from being started as a dependency of the plugin.
-#RUN rm -f /usr/lib64/gnome-software/plugins-*/libgs_plugin_dnf5.so && \
-#    systemctl mask packagekit && \
-#    echo "gnome-software dnf5 plugin removed"
-
+RUN rm -f /usr/lib64/gnome-software/plugins-*/libgs_plugin_dnf5.so && \
+    systemctl mask packagekit && \
+    echo "gnome-software dnf5 plugin removed"
 
 ### Power improvements for MacBooks
 ### Kernel argument: tell firmware it's not booting macOS (creates linux accessible AHCI paths)
@@ -77,7 +76,7 @@ COPY --from=ctx /power/99-thunderbolt-pm.rules /usr/lib/udev/rules.d/99-thunderb
 COPY --from=ctx /power/default-wifi-powersave-on.conf /usr/lib/NetworkManager/conf.d/default-wifi-powersave-on.conf
 
 ### powertop autotune on boot
-### no longer using a custome file - as fedora powertop package includes in-box service file, 
+### no longer using a custom file - as fedora powertop package includes in-box service file, 
 ### which is enabled in build.sh
 #COPY --from=ctx /power/powertop-autotune.service /usr/lib/systemd/system/powertop-autotune.service
 #RUN systemctl enable powertop-autotune.service
@@ -106,7 +105,7 @@ RUN chmod +x /usr/lib/systemd/system-sleep/restore-backlight.sh
 COPY --from=ctx /fixes/fix-macbook-wakeup /usr/lib/systemd/system-sleep/fix-macbook-wakeup
 RUN chmod +x /usr/lib/systemd/system-sleep/fix-macbook-wakeup
 
-### Broadcom wl WiFi interface reset on suspend/resume  (was slower to reconnect)
+### Broadcom wl WiFi interface reset on suspend/resume  (disables now, as was slower to reconnect)
 #COPY --from=ctx /fixes/wl-suspend.service /usr/lib/systemd/system/wl-suspend.service
 #COPY --from=ctx /fixes/wl-suspend.sh /usr/bin/wl-suspend.sh
 #RUN chmod +x /usr/bin/wl-suspend.sh && \
@@ -115,6 +114,21 @@ RUN chmod +x /usr/lib/systemd/system-sleep/fix-macbook-wakeup
 
 ### FacetimeHD: silence optional firmware load error (broke facetime camera for me)
 #RUN ln -sf firmware.bin /usr/lib/firmware/facetimehd/1871_01XX.dat    
+
+### Add Ublue automatic updates process uupd
+RUN dnf copr enable ublue-os/packages && \
+    dnf install -y uupd && \
+    systemctl enable --now uupd.timer && \
+    echo "Ublue automatic updates enabled"
+
+### Disable old rpm-ostree automatic updates process
+RUN sed -i 's/^AutomaticUpdatePolicy=.*/AutomaticUpdatePolicy=none/' /etc/rpm-ostreed.conf && \
+    echo "rpm-ostree automatic updates disabled in rpm-ostreed.conf" && \
+    systemctl disable rpm-ostreed-automatic.timer
+
+### Add the Flathub Flatpak remote and remove the Fedora Flatpak remote
+RUN flatpak remote-add --system --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+RUN systemctl disable flatpak-add-fedora-repos.service
 
 ### Run Build Script
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
