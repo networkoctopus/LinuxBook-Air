@@ -106,10 +106,6 @@ systemctl enable mbpfan.service
 cd /
 rm -rf /tmp/mbpfan
 
-#cleanup
-dnf5 autoremove -y && \
-rm -rf /run/dnf
-
 # Disable third-party repos
 for repo in negativo17-fedora-multimedia fedora-cisco-openh264; do
     if [[ -f "/etc/yum.repos.d/${repo}.repo" ]]; then
@@ -140,6 +136,11 @@ done
 if [ -f /etc/yum.repos.d/fedora-coreos-pool.repo ]; then
     sed -i 's@enabled=1@enabled=0@g' /etc/yum.repos.d/fedora-coreos-pool.repo
 fi
+
+#cleanup
+dnf5 autoremove -y && \
+rm -rf /run/dnf
+
 
 # Install Toshy native dependencies - extracted dynamically from upstream source
 #TOSHY_TMP=$(mktemp -d)
