@@ -142,6 +142,10 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     /ctx/build.sh
 
+### Post-build cleanup (must be outside cache mounts)
+RUN rm -rf /var/cache/libdnf5 && \
+    truncate -s 0 /var/log/dnf5.log
+
 ### LINTING
 ## Verify final image and contents are correct.
 RUN bootc container lint
