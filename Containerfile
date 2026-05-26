@@ -18,14 +18,14 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/log \
     /ctx/build_files/15-fixes.sh
 
-### POWER (powertop, mbpfan, aspm, wifi powersave)
+### POWER (powertop, aspm, wifi powersave)
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     --mount=type=tmpfs,dst=/tmp \
     /ctx/build_files/20-power.sh
 
-### PACKAGES (intel-gpu-tools, gnome extensions, dconf, toshy deps)
+### PACKAGES (mbpfan, intel-gpu-tools, gnome extensions, dconf, toshy deps)
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \

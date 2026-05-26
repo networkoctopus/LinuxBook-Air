@@ -26,17 +26,6 @@ install -Dm644 /ctx/power/default-wifi-powersave-on.conf \
 dnf5 install -y powertop intel-gpu-tools
 systemctl enable powertop.service
 
-### ── mbpfan (fan control for MacBooks) ──
-dnf5 install -y make gcc git
-git clone --depth 1 --branch v2.4.0 https://github.com/linux-on-mac/mbpfan.git /tmp/mbpfan
-cd /tmp/mbpfan
-make
-make install
-install -Dm644 mbpfan.service /usr/lib/systemd/system/mbpfan.service
-systemctl enable mbpfan.service
-cd /
-rm -rf /tmp/mbpfan
-
 ### ── ASPM tuning ──
 # Force stubborn devices to enable ASPM on boot and after resume
 install -Dm755 /ctx/power/aspm-tune.sh /usr/bin/aspm-tune.sh
