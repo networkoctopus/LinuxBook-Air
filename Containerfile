@@ -45,7 +45,7 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
 ### CLEANUP
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \
-    /ctx/100-cleanup.sh
+    /ctx/99-cleanup.sh
 
 ### LINTING
 RUN bootc container lint

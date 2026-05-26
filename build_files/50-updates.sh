@@ -14,15 +14,9 @@ sed -i 's/^AutomaticUpdatePolicy=.*/AutomaticUpdatePolicy=none/' /etc/rpm-ostree
 systemctl disable rpm-ostreed-automatic.timer
 echo "rpm-ostree automatic updates disabled"
 
-### ── Flatpak remotes ──
-# Add Flathub and remove the Fedora Flatpak remote
-flatpak remote-add --system --if-not-exists flathub \
-    https://flathub.org/repo/flathub.flatpakrepo
-systemctl disable flatpak-add-fedora-repos.service
-
 ### ── GNOME Software / PackageKit ──
-# Prevent gnome-software from trying to update packages and conflicting
-# with bootc's deployment process
+# Prevent gnome-software from trying to update packages and failing
+# Updates handled with uupd
 rm -f /usr/lib64/gnome-software/plugins-*/libgs_plugin_dnf5.so
 systemctl mask packagekit
 echo "gnome-software dnf5 plugin removed"

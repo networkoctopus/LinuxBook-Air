@@ -30,25 +30,15 @@ fi
 
 ### ── DNF cleanup ──
 dnf5 autoremove -y
+
+### ── Cache / run / tmp cleanup ──
 rm -rf \
     /run/dnf \
-    /var/cache/libdnf5
-
-truncate -s 0 /var/log/dnf5.log
-
-### ── General cache / tmp cleanup ──
-rm -rf \
-    /var/cache/* \
-    /var/lib/dnf/repos/* \
-    /var/lib/flatpak/repo/* \
-    /run/dnf/* \
     /tmp/* \
-    /var/tmp/*
+    /var/tmp/* \
+    /var/cache/* \
+    /var/lib/dnf/repos \
+    /var/lib/dnf/system-repo.lock
 
-rm -f \
-    /var/cache/ldconfig/aux-cache \
-    /var/lib/dnf/system-repo.lock \
-    /var/lib/flatpak/.changed
-
-### ── Log truncation ──
-find /var/log -type f -exec truncate -s 0 {} \;
+### ── Log cleanup ──
+find /var/log -type f -delete
