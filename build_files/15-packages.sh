@@ -3,9 +3,8 @@ set -ouex pipefail
 
 ### Install packages from packages.yml
 dnf5 install -y yq && \
-    yq eval '.[][]' /var/tmp/packages.yml | xargs dnf5 install -y --skip-unavailable && \
-    dnf5 remove -y yq && \
-    rm /var/tmp/packages.yml
+    yq eval '.[][]' /ctx/packages.yml | xargs dnf5 install -y --skip-unavailable && \
+    dnf5 remove -y yq
 
 ### ── GNOME Shell extensions (system-wide) ──
 GNOME_VERSION=$(rpm -q --queryformat '%{VERSION}' gnome-shell | cut -d. -f1)

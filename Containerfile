@@ -13,7 +13,6 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     /ctx/10-kmods.sh
 
 ### PACKAGES (mbpfan, intel-gpu-tools, gnome extensions, dconf, toshy deps)
-COPY /ctx/packages.yml /var/tmp/packages.yml
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
