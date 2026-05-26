@@ -26,9 +26,28 @@ akmods --force --kernels "$(rpm -q --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}'
 # Mark runtime packages as user-installed so autoremove keeps them
 dnf5 -y mark user facetimehd facetimehd-firmware
 
-# Cleanup akmods build artifacts to save space
 rm -rf /var/cache/akmods /run/akmods /run/dnf
 
 ### ── akmods user cleanup ──
 userdel akmods 2>/dev/null || true
 groupdel akmods 2>/dev/null || true
+
+### ── mbpfan (fan control for MacBooks) ──
+git clone --depth 1 --branch v2.4.0 https://github.com/linux-on-mac/mbpfan.git /tmp/mbpfan
+cd /tmp/mbpfan
+make
+make install
+install -Dm644 mbpfan.service /usr/lib/systemd/system/mbpfan.service
+systemctl enable mbpfan.service
+cd /
+rm -rf /tmp/mbpfan
+
+# Remove build-time-only kmod toolchain
+dnf5 remove -y \
+    akmod-facetimehd \
+    akmods \
+    kmodtool \
+    kernel-devel \
+    kernel-devel-matched \
+    kernel-headers \
+    make
