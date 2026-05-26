@@ -33,7 +33,3 @@ theme_deps:
   - gnome-tweaks
   - sassc
   - glib2-devel
-
-# mbpfan (fan control for MacBooks)
-mbpfan_deps:
-  - make

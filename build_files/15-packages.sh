@@ -4,7 +4,20 @@ set -ouex pipefail
 ### Install packages from packages.yml
 dnf5 install -y yq && \
     yq eval '.[][]' /ctx/packages.yml | xargs dnf5 install -y --skip-unavailable && \
-    dnf5 remove -y yq
+    yq eval '.[][]' /ctx/packages.yml | xargs dnf5 mark install && \
+    dnf5 remove -y --no-autoremove yq
+
+### ── mbpfan (fan control for MacBooks) ──
+dnf5 install -y make
+git clone --depth 1 --branch v2.4.0 https://github.com/linux-on-mac/mbpfan.git /tmp/mbpfan
+cd /tmp/mbpfan
+make
+make install
+install -Dm644 mbpfan.service /usr/lib/systemd/system/mbpfan.service
+systemctl enable mbpfan.service
+cd /
+rm -rf /tmp/mbpfan
+dnf5 remove -y --no-autoremove make
 
 ### ── GNOME Shell extensions (system-wide) ──
 GNOME_VERSION=$(rpm -q --queryformat '%{VERSION}' gnome-shell | cut -d. -f1)
@@ -60,13 +73,4 @@ EOF
 
 dconf update
 
-### ── mbpfan (fan control for MacBooks) ──
-git clone --depth 1 --branch v2.4.0 https://github.com/linux-on-mac/mbpfan.git /tmp/mbpfan
-cd /tmp/mbpfan
-make
-make install
-install -Dm644 mbpfan.service /usr/lib/systemd/system/mbpfan.service
-systemctl enable mbpfan.service
-cd /
-rm -rf /tmp/mbpfan
-dnf5 remove -y make
+
