@@ -3,161 +3,49 @@ FROM scratch AS ctx
 COPY build_files /
 
 FROM ghcr.io/ublue-os/silverblue-main:44
-## Other possible base images include:
-# FROM quay.io/fedora/fedora-silverblue:latest  (tracks latest stable)
-# FROM ghcr.io/ublue-os/bluefin:stable
-# FROM ghcr.io/ublue-os/bazzite:stable
-#
-# Universal Blue Images: https://github.com/orgs/ublue-os/packages
-# Fedora base images: quay.io/fedora/fedora-silverblue
 
-### [IM]MUTABLE /opt
-## Some bootable images, like Fedora, have /opt symlinked to /var/opt, in order to
-## make it mutable/writable for users. However, some packages write files to this directory,
-## thus its contents might be wiped out when bootc deploys an image, making it troublesome for
-## some packages. Eg, google-chrome, docker-desktop.
-##
-## Uncomment the following line if one desires to make /opt immutable and be able to be used
-## by the package manager.
-# RUN rm /opt && mkdir /opt
-
-### KMODS
-## wl (broadcom): installed via ublue akmods pre-built image (avoids akmod-wl root build failure)
-COPY --from=ghcr.io/ublue-os/akmods:main-44 / /tmp/akmods-common
-RUN --mount=type=cache,dst=/var/cache \
-    --mount=type=cache,dst=/var/log \
-    dnf install -y \
-    /tmp/akmods-common/rpms/ublue-os/ublue-os-akmods-addons*.rpm \
-    /tmp/akmods-common/rpms/common/broadcom-wl*.rpm \
-    /tmp/akmods-common/rpms/kmods/kmod-wl*.rpm && \
-    rm -rf /tmp/akmods-common /run/akmods /run/dnf
-
-## facetimehd
-RUN --mount=type=cache,dst=/var/cache \
-    --mount=type=cache,dst=/var/log \
-    dnf5 -y copr enable mulderje/facetimehd-kmod && \
-    dnf5 install -y --setopt=tsflags=noscripts facetimehd-kmod facetimehd facetimehd-firmware && \
-    dnf5 -y copr disable mulderje/facetimehd-kmod && \
-    echo "=== Builder kernel: $(uname -r) ===" && \
-    echo "=== Target kernel: $(rpm -q --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}' kernel-devel) ===" && \
-    akmods --force --kernels $(rpm -q --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}' kernel-devel) && \
-    dnf5 -y mark user facetimehd facetimehd-firmware && \
-    dnf5 remove -y akmod-facetimehd akmods kmodtool kernel-devel kernel-devel-matched kernel-headers && \
-    dnf5 autoremove -y && \
-    rm -rf /var/cache/akmods /run/akmods /run/dnf
-
-##Akmods user cleanup   
-RUN userdel akmods 2>/dev/null || true && \
-    groupdel akmods 2>/dev/null || true
-
-### Toshy first login setup
-COPY --from=ctx /toshy/toshy-first-login-setup.sh   /usr/libexec/toshy-first-login-setup.sh
-COPY --from=ctx /toshy/toshy-first-login-launch.sh  /usr/libexec/toshy-first-login-launch.sh
-COPY --from=ctx /toshy/toshy-first-login-setup.service \
-                /usr/lib/systemd/user/toshy-first-login-setup.service
-
-RUN chmod +x /usr/libexec/toshy-first-login-setup.sh \
-             /usr/libexec/toshy-first-login-launch.sh \
- && mkdir -p /usr/lib/systemd/user/graphical-session.target.wants \
- && ln -sf /usr/lib/systemd/user/toshy-first-login-setup.service \
-           /usr/lib/systemd/user/graphical-session.target.wants/toshy-first-login-setup.service
-
-### Stop gnome software from trying to update packages and causing conflicts with bootc's 
-### deployment process. This is done by removing the dnf5 plugin for gnome software 
-### and masking packagekit to prevent it from being started as a dependency of the plugin.
-RUN rm -f /usr/lib64/gnome-software/plugins-*/libgs_plugin_dnf5.so && \
-    systemctl mask packagekit && \
-    echo "gnome-software dnf5 plugin removed"
-
-### Power improvements for MacBooks
-### Kernel argument: tell firmware it's not booting macOS (creates linux accessible AHCI paths)
-COPY --from=ctx /power/im-not-macos.toml /usr/lib/bootc/kargs.d/im-not-macos.toml
-
-### Disables loading Thunderbolt driver
-COPY --from=ctx /power/thunderbolt-blacklist.conf /usr/lib/modprobe.d/thunderbolt-blacklist.conf
-
-### Thunderbolt runtime PM udev rule (turns on power management for Thunderbolt devices)
-COPY --from=ctx /power/99-thunderbolt-pm.rules /usr/lib/udev/rules.d/99-thunderbolt-pm.rules
-
-### Enable WiFi powersave by default
-COPY --from=ctx /power/default-wifi-powersave-on.conf /usr/lib/NetworkManager/conf.d/default-wifi-powersave-on.conf
-
-### powertop autotune on boot
-### no longer using a custom file - as fedora powertop package includes in-box service file, 
-### which is enabled in build.sh
-#COPY --from=ctx /power/powertop-autotune.service /usr/lib/systemd/system/powertop-autotune.service
-#RUN systemctl enable powertop-autotune.service
-
-### ASPM tuning on boot (forces a couple of stubborn devices to enable ASPM)
-COPY --from=ctx /power/aspm-tune.sh /usr/bin/aspm-tune.sh
-RUN chmod +x /usr/bin/aspm-tune.sh
-COPY --from=ctx /power/aspm-tune.service /usr/lib/systemd/system/aspm-tune.service
-RUN systemctl enable aspm-tune.service
-
-### ASPM re-tuning on resume
-COPY --from=ctx /power/aspm-tune-resume.service /usr/lib/systemd/system/aspm-tune-resume.service
-RUN systemctl enable aspm-tune-resume.service
-
-### Power audit script to troubleshoot power issues (can be run manually)
-COPY --from=ctx /power/power-audit.sh /usr/bin/power-audit.sh
-RUN chmod +x /usr/bin/power-audit.sh
-
-##FIXES
-##After S3 resume the intel_backlight driver may leave brightness at 0.
-##This hook saves the brightness before sleep and restores it after wake.
-COPY --from=ctx /fixes/restore-backlight.sh /usr/lib/systemd/system-sleep/restore-backlight.sh
-RUN chmod +x /usr/lib/systemd/system-sleep/restore-backlight.sh
-
-##Speed up Resume (https://forums.linuxmint.com/viewtopic.php?t=456323)
-COPY --from=ctx /fixes/fix-macbook-wakeup /usr/lib/systemd/system-sleep/fix-macbook-wakeup
-RUN chmod +x /usr/lib/systemd/system-sleep/fix-macbook-wakeup
-
-### Broadcom wl WiFi interface reset on suspend/resume  (disables now, as was slower to reconnect)
-#COPY --from=ctx /fixes/wl-suspend.service /usr/lib/systemd/system/wl-suspend.service
-#COPY --from=ctx /fixes/wl-suspend.sh /usr/bin/wl-suspend.sh
-#RUN chmod +x /usr/bin/wl-suspend.sh && \
-#    systemctl enable wl-suspend.service && \
-#    echo "wl-suspend fix enabled"       
-
-### FacetimeHD: silence optional firmware load error (broke facetime camera for me)
-#RUN ln -sf firmware.bin /usr/lib/firmware/facetimehd/1871_01XX.dat    
-
-### Add Ublue automatic updates process uupd
-RUN dnf5 -y copr enable ublue-os/packages
-RUN dnf5 install -y uupd
-RUN systemctl enable uupd.timer && \
-    echo "Ublue automatic updates enabled"
-
-### Disable old rpm-ostree automatic updates process
-RUN sed -i 's/^AutomaticUpdatePolicy=.*/AutomaticUpdatePolicy=none/' /etc/rpm-ostreed.conf && \
-    echo "rpm-ostree automatic updates disabled in rpm-ostreed.conf" && \
-    systemctl disable rpm-ostreed-automatic.timer
-
-### Add the Flathub Flatpak remote and remove the Fedora Flatpak remote
-RUN flatpak remote-add --system --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-RUN systemctl disable flatpak-add-fedora-repos.service
-
-### Run Build Script
+### KMODS (broadcom-wl + facetimehd)
+COPY --from=ghcr.io/ublue-os/akmods:main-44 / /var/tmp/akmods-common
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     --mount=type=tmpfs,dst=/tmp \
-    /ctx/build.sh
+    /ctx/scripts/10-kmods.sh
 
-### Post-build cleanup
-RUN rm -rf \
-    /var/cache/* \
-    /var/lib/dnf/repos/* \
-    /var/lib/flatpak/repo/* \
-    /run/dnf/* \
-    /tmp/* \
-    /var/tmp/* && \
-    rm -f \
-    /var/cache/ldconfig/aux-cache \
-    /var/lib/dnf/system-repo.lock \
-    /var/lib/flatpak/.changed && \
-    find /var/log -type f -exec truncate -s 0 {} \;
+### FIXES (sleep hooks, backlight, wakeup)
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    /ctx/scripts/15-fixes.sh
+
+### POWER (powertop, mbpfan, aspm, wifi powersave)
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/scripts/20-power.sh
+
+### PACKAGES (intel-gpu-tools, gnome extensions, dconf, toshy deps)
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/scripts/30-packages.sh
+
+### TOSHY (first-login setup scripts + service)
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    /ctx/scripts/40-toshy.sh
+
+### UPDATES (uupd, disable rpm-ostreed auto-updates, flatpak remotes)
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    /ctx/scripts/50-updates.sh
+
+### CLEANUP
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    /ctx/scripts/100-cleanup.sh
 
 ### LINTING
-## Verify final image and contents are correct.
 RUN bootc container lint
