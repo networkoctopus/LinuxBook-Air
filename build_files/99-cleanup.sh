@@ -31,14 +31,13 @@ if [[ -f /etc/yum.repos.d/fedora-coreos-pool.repo ]]; then
     sed -i 's@enabled=1@enabled=0@g' /etc/yum.repos.d/fedora-coreos-pool.repo
 fi
 
-### Clean up packages
-dnf5 autoremove -y
 
 # Remove tmp files and everything in dirs that make bootc unhappy
 rm -rf /tmp/* || true
 rm -rf /run/dnf
 rm -rf /usr/etc
 rm -rf /boot && mkdir /boot
+
 # Preserve cache mounts
 find /var/* -maxdepth 0 -type d \! -name cache \! -name log -exec rm -rf {} \;
 find /var/cache/* -maxdepth 0 -type d \! -name libdnf5 -exec rm -rf {} \;
