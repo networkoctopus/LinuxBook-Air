@@ -31,6 +31,7 @@ fi
 # Cleanup
 # Remove tmp files and everything in dirs that make bootc unhappy
 rm -rf /tmp/* || true
+rm -rf /run/dnf
 rm -rf /usr/etc
 rm -rf /boot && mkdir /boot
 # Preserve cache mounts
