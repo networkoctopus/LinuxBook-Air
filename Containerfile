@@ -4,6 +4,13 @@ COPY build_files /
 
 FROM ghcr.io/ublue-os/silverblue-main:44
 
+### PACKAGES (mbpfan, intel-gpu-tools, gnome extensions, dconf, toshy deps)
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/15-packages.sh
+
 ### KMODS (broadcom-wl + facetimehd)
 COPY --from=ghcr.io/ublue-os/akmods:main-44 / /var/tmp/akmods-common
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
@@ -11,13 +18,6 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/log \
     --mount=type=tmpfs,dst=/tmp \
     /ctx/10-kmods.sh
-
-### PACKAGES (mbpfan, intel-gpu-tools, gnome extensions, dconf, toshy deps)
-RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
-    --mount=type=cache,dst=/var/cache \
-    --mount=type=cache,dst=/var/log \
-    --mount=type=tmpfs,dst=/tmp \
-    /ctx/15-packages.sh
 
 ### POWER tweaks (disabled thunderbolt, powertop, aspm, wifi powersave)
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
