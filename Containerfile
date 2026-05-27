@@ -10,12 +10,12 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     --mount=type=tmpfs,dst=/tmp \
-    /ctx/10-kmods.sh \
-    /ctx/15-packages.sh \
-    /ctx/20-power.sh \
-    /ctx/30-fixes.sh \
-    /ctx/40-toshy.sh \
-    /ctx/50-updates.sh \
+    /ctx/10-kmods.sh && \
+    /ctx/15-packages.sh && \
+    /ctx/20-power.sh && \
+    /ctx/30-fixes.sh && \
+    /ctx/40-toshy.sh && \
+    /ctx/50-updates.sh && \
     /ctx/99-cleanup.sh
     
 ### PACKAGES (mbpfan, intel-gpu-tools, gnome extensions, dconf, toshy deps)
