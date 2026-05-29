@@ -5,7 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 3 * * 0'  # 3:00am UTC every Sunday
+    - cron: '0 3 * * 3,0' # Every Wednesday and Sunday at 3:00 UTC    
   push:
     branches:
       - main
