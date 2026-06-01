@@ -12,8 +12,18 @@ systemctl disable rpm-ostreed-automatic.timer
 echo "rpm-ostree automatic updates disabled"
 
 ### ── GNOME Software / PackageKit ──
-# Prevent gnome-software from trying to update packages and failing
-# Updates handled with uupd
+# Prevent gnome-software from doing background updates
+# Updates handled by uupd; UI still works for manual use
 rm -f /usr/lib64/gnome-software/plugins-*/libgs_plugin_dnf5.so
 systemctl mask packagekit
-echo "gnome-software dnf5 plugin removed"
+echo "gnome-software dnf5 plugin removed, packagekit masked"
+
+### ── Disable gnome-software background updates via dconf (system-wide) ──
+mkdir -p /etc/dconf/db/local.d
+cat > /etc/dconf/db/local.d/01-gnome-software << 'EOF'
+[org/gnome/software]
+allow-updates=false
+download-updates=false
+EOF
+dconf update
+echo "gnome-software dconf policy applied"
