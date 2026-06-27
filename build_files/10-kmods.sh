@@ -9,23 +9,35 @@ dnf5 install -y \
     /var/tmp/akmods-common/rpms/common/broadcom-wl*.rpm \
     /var/tmp/akmods-common/rpms/kmods/kmod-wl*.rpm
 
-### ── FacetimeHD (built from akmod source) ──
+### ── FacetimeHD (built from source) ──
 # Install kernel-devel from akmods image (matches base kernel, avoids repo timing issues)
 dnf5 install -y \
     /var/tmp/akmods-common/kernel-rpms/kernel-devel-*.rpm \
     /var/tmp/akmods-common/kernel-rpms/kernel-devel-matched-*.rpm
 
-dnf5 -y copr enable mulderje/facetimehd-kmod
-dnf5 install -y --setopt=tsflags=noscripts \
-    facetimehd-kmod \
-    facetimehd \
-    facetimehd-firmware
-dnf5 -y copr disable mulderje/facetimehd-kmod
+# Tools needed for kmod build and firmware extraction
+dnf5 install -y curl cpio xz
 
 KERNEL_VERSION=$(rpm -q --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}' kernel-core)
-akmods --force --kernels "${KERNEL_VERSION}"
 
-dnf5 -y mark user facetimehd facetimehd-firmware
+# Build and install the facetimehd kernel module
+git clone --depth 1 https://github.com/patjak/facetimehd.git /tmp/facetimehd
+cd /tmp/facetimehd
+make KDIR="/usr/src/kernels/${KERNEL_VERSION}"
+install -Dm644 facetimehd.ko \
+    "/usr/lib/modules/${KERNEL_VERSION}/extra/facetimehd/facetimehd.ko"
+depmod -a "${KERNEL_VERSION}"
+cd /
+rm -rf /tmp/facetimehd
+
+# Extract Apple firmware blob and install
+# Downloads Apple Boot Camp software at build time to extract the firmware binary
+git clone --depth 1 https://github.com/patjak/facetimehd-firmware.git /tmp/facetimehd-firmware
+cd /tmp/facetimehd-firmware
+make
+make install PREFIX=/usr
+cd /
+rm -rf /tmp/facetimehd-firmware
 
 ### ── mbpfan (fan control for MacBooks) ──
 git clone --depth 1 --branch v2.4.0 https://github.com/linux-on-mac/mbpfan.git /tmp/mbpfan
@@ -39,12 +51,12 @@ rm -rf /tmp/mbpfan
 
 # Remove build-time-only kmod toolchain
 dnf5 remove -y \
-    akmod-facetimehd \
     akmods \
     kmodtool \
     kernel-devel \
     kernel-devel-matched \
-    kernel-headers
+    kernel-headers \
+    curl cpio xz
 
 ### Clean up packages
 dnf5 autoremove -y
