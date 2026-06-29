@@ -1,7 +1,8 @@
 # powertop / intel-gpu-tools (power tuning and monitoring)
-power_monitoring:
+tools:
   - powertop
   - intel-gpu-tools
+  - telnet
 
 # Toshy native dependencies
 toshy_deps:
