@@ -1,5 +1,5 @@
 ---
-name: Build disk images
+name: Build qcow2 image
 
 on:
   workflow_dispatch:
@@ -40,9 +40,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        disk-type: ["anaconda-iso"]
+        disk-type: ["qcow2"] #, "anaconda-iso"]
     permissions:
-      contents: read
+      contents: write
       packages: read
       id-token: write
 
@@ -98,6 +98,15 @@ jobs:
           compression-level: 0
           overwrite: true
       
+      - name: Publish disk image to Release
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            ${{ steps.build.outputs.output-directory }}/qcow2/disk.qcow2
+            ${{ steps.build.outputs.output-directory }}/qcow2/disk.qcow2.sha256
+
       - name: Upload to S3
         if: inputs.upload-to-s3 == true && github.event_name != 'pull_request'
         shell: bash
