@@ -1,7 +1,9 @@
 ---
-name: Build qcow2 image
+name: Build disk images
 
 on:
+  schedule:
+    - cron: '0 3 * * 0' # Every Sunday at 03:00 UTC
   workflow_dispatch:
     inputs:
       upload-to-s3:
@@ -36,13 +38,13 @@ concurrency:
 jobs:
   build:
     name: Build disk images
-    runs-on: ${{ inputs.platform == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
+    runs-on: ${{ (inputs.platform || 'amd64') == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
     strategy:
       fail-fast: false
       matrix:
-        disk-type: ["qcow2"] #, "anaconda-iso"]
+        disk-type: ["anaconda-iso"]
     permissions:
-      contents: write
+      contents: read
       packages: read
       id-token: write
 
@@ -98,15 +100,6 @@ jobs:
           compression-level: 0
           overwrite: true
       
-      - name: Publish disk image to Release
-        if: github.event_name != 'pull_request'
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: |
-            ${{ steps.build.outputs.output-directory }}/qcow2/disk.qcow2
-            ${{ steps.build.outputs.output-directory }}/qcow2/disk.qcow2.sha256
-
       - name: Upload to S3
         if: inputs.upload-to-s3 == true && github.event_name != 'pull_request'
         shell: bash

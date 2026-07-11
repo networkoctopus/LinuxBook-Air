@@ -15,10 +15,8 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     /ctx/15-packages.sh && \
     /ctx/20-power.sh && \
     /ctx/30-fixes.sh && \
-    ##/ctx/35-mactahoe-theme.sh && \ #still working on this
-    /ctx/40-toshy.sh && \
+    /ctx/40-post-deploy-setup.sh && \
     /ctx/50-updates.sh && \
-    ##/ctx/85-service-masks.sh && \
     /ctx/90-initramfs.sh && \
     /ctx/99-cleanup.sh
     
@@ -42,9 +40,9 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
 #    --mount=type=cache,dst=/var/log \
 #    /ctx/30-fixes.sh
 #
-#### TOSHY (first-login setup scripts + service)
+#### POST-DEPLOY SETUP (Toshy + default Flatpaks)
 #RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
-#    /ctx/40-toshy.sh
+#    /ctx/40-post-deploy-setup.sh
 #
 #### UPDATES (uupd, disable rpm-ostreed auto-updates, flatpak remotes)
 #RUN --mount=type=bind,from=ctx,source=/,target=/ctx \

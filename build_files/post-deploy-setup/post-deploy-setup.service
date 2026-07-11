@@ -1,0 +1,15 @@
+[Unit]
+Description=LinuxBook Air per-user initial setup
+ConditionPathExists=!%h/.config/linuxbook-air/initial-setup-done
+ConditionPathExists=!%h/.config/linuxbook-air/initial-setup-skipped
+After=graphical-session.target
+Requires=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/linuxbook-air-post-deploy-setup-launch.sh
+TimeoutStartSec=1800
+Restart=no
+
+[Install]
+WantedBy=graphical-session.target

@@ -4,6 +4,9 @@ set -ouex pipefail
 ### Enable ublue-os/packages COPR for any packages that come from there
 dnf5 -y copr enable ublue-os/packages
 
+### Remove a few packages that are not needed in the container
+dnf5 remove -y htop nvtop
+
 ### Install packages from packages.yml
 dnf5 install -y yq && \
     yq eval '.[][]' /ctx/packages.yml | xargs dnf5 install -y --skip-unavailable
@@ -33,11 +36,34 @@ install_extension() {
     echo "Done: $uuid"
 }
 
+install_github_extension() {
+    local repo="$1"
+    local ref="$2"
+    local uuid="$3"
+
+    echo "Installing extension $uuid from $repo ($ref)..."
+
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    curl -fsSL "https://github.com/${repo}/archive/${ref}.tar.gz" \
+        -o "$tmpdir/source.tar.gz"
+    tar -xzf "$tmpdir/source.tar.gz" -C "$tmpdir"
+
+    local source_dir
+    source_dir=$(find "$tmpdir" -type d -name "$uuid" -print -quit)
+    test -n "$source_dir"
+    cp -a "$source_dir" "${EXTENSIONS_DIR}/${uuid}"
+    rm -rf "$tmpdir"
+
+    echo "Done: $uuid"
+}
+
 install_extension 615  "appindicatorsupport@rgcjonas.gmail.com"
 install_extension 5060 "xremap@k0kubun.com"
 install_extension 1460 "Vitals@CoreCoding.com"
 install_extension 19   "user-theme@gnome-shell-extensions.gcampax.github.com"
 install_extension 307  "dash-to-dock@micxgx.gmail.com"
+install_github_extension "Vyachean/uupd-indicator" "refs/heads/main" "uupd-indicator@projectbluefin.io"
 
 # Fix permissions so all users can read extensions
 chmod -R a+rX /usr/share/gnome-shell/extensions/
@@ -56,10 +82,12 @@ printf 'user-db:user\nsystem-db:local\n' > /etc/dconf/profile/user
 
 cat > /etc/dconf/db/local.d/00-extensions << 'EOF'
 [org/gnome/shell]
-enabled-extensions=['appindicatorsupport@rgcjonas.gmail.com', 'xremap@k0kubun.com', 'Vitals@CoreCoding.com', 'user-theme@gnome-shell-extensions.gcampax.github.com', 'dash-to-dock@micxgx.gmail.com']
+enabled-extensions=['appindicatorsupport@rgcjonas.gmail.com', 'xremap@k0kubun.com', 'Vitals@CoreCoding.com', 'user-theme@gnome-shell-extensions.gcampax.github.com', 'dash-to-dock@micxgx.gmail.com', 'uupd-indicator@projectbluefin.io']
 disable-user-extensions=false
+
+[org/gnome/shell/extensions/uupd-indicator]
+visibility-mode='auto'
+show-reboot-required=true
 EOF
 
 dconf update
-
-
