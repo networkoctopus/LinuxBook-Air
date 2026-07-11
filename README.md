@@ -2,9 +2,11 @@
 
 A practical, immutable Fedora GNOME image for Intel MacBook Airs, built on [Universal Blue's `silverblue-main`](https://github.com/ublue-os/main).
 
+Currently tracking [Fedora 44](https://fedoraproject.org).
+
 LinuxBook-Air aims to feel like stock Fedora GNOME while making an older MacBook a better Linux laptop: Mac-style keyboard shortcuts, working Broadcom Wi-Fi and FaceTime HD camera support, automatic transactional updates, sensible fan control, and aggressive power and boot-time tuning.
 
-This image has been my daily workhorse for three months, so I decided it was time to share it.
+This image has been my daily driver since early 2026, so I decided it was time to share it.
 
 > [!IMPORTANT]
 > **Thunderbolt is intentionally disabled to save power.** Treat the Thunderbolt/Mini DisplayPort port as unsupported: attached devices and some display configurations may not work. If you rely on that port, this image is not currently for you. If you do not, disabling it can save multiple watts.
@@ -46,7 +48,7 @@ Check your identifier from Linux with:
 cat /sys/class/dmi/id/product_name
 ```
 
-Do not assume that other MacBooks or MacBook Pros are compatible merely because they are from the same year. The trimmed initramfs omits drivers and storage features this specific machine does not need, including LVM, MD RAID, encrypted-root support, and several GPU/storage drivers.
+Do not assume that other MacBooks or MacBook Pros are compatible merely because they are from the same year. The trimmed initramfs omits drivers and storage features this specific machine does not need, including LVM, encrypted-root support, and several GPU/storage drivers.
 
 ## Switch from another bootc system
 
