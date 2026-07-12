@@ -145,7 +145,8 @@ if [[ "$INSTALL_FIREFOX" == true && ! -f "$FIREFOX_SENTINEL" ]]; then
     fi
 
     if ! compgen -G "${HOME}/.mozilla/firefox/*.default*" > /dev/null 2>&1; then
-        firefox -CreateProfile default-release >> "$LOG_FILE" 2>&1 || \
+        MOZ_HEADLESS=1 firefox --headless -CreateProfile default-release \
+            >> "$LOG_FILE" 2>&1 || \
             fail "Firefox could not create its default profile."
     fi
 
@@ -190,4 +191,5 @@ fi
 
 touch "$DONE_FILE"
 progress 100 "Setup complete. The selected components are ready."
+printf '\nAdditional MacTahoe themes are available in GNOME Tweaks under Appearance.\n'
 wait_to_close

@@ -32,7 +32,7 @@ CHOICES=$(zenity --list \
     --separator="|" \
     --ok-label="Install selected" \
     --cancel-label="Not now" \
-    --width=620 --height=360 2>/dev/null) || exit 0
+    --width=700 --height=500 2>/dev/null) || exit 0
 
 if [[ -z "$CHOICES" ]]; then
     if zenity --question \
@@ -85,7 +85,8 @@ if [[ -f "$DONE_FILE" ]]; then
     zenity --info \
         --title="LinuxBook-Air Setup Complete" \
         --window-icon="preferences-system" \
-        --text="The selected LinuxBook-Air components are installed." 2>/dev/null
+        --text="The selected LinuxBook-Air components are installed.\n\nAdditional MacTahoe themes are available in GNOME Tweaks under the Appearance menu." \
+        --width=560 2>/dev/null
 else
     zenity --error \
         --title="LinuxBook-Air Setup Incomplete" \
