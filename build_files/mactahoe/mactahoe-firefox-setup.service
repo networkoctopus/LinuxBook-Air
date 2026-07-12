@@ -1,8 +1,6 @@
 [Unit]
-Description=MacTahoe Firefox Theme Setup
-ConditionPathExists=!%h/.config/mactahoe/.firefox-done
-After=graphical-session.target
-Requires=graphical-session.target
+Description=MacTahoe Desktop and Firefox Theme Setup
+PartOf=graphical-session.target
 
 [Service]
 Type=oneshot

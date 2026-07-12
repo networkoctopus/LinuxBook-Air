@@ -8,11 +8,13 @@ install -Dm644 /ctx/power/im-not-macos.toml \
 
 ### ── Kernel module config ──
 # Disable Thunderbolt driver (reduces power draw on MacBook Air 7,1)
+# source: https://wiki.archlinux.org/title/Mac/Troubleshooting
 install -Dm644 /ctx/power/thunderbolt-blacklist.conf \
     /usr/lib/modprobe.d/thunderbolt-blacklist.conf
 
 ### ── udev rules ──
 # Enable runtime PM for Thunderbolt PCIe devices
+# source: https://wiki.archlinux.org/title/Mac/Troubleshooting
 install -Dm644 /ctx/power/99-thunderbolt-pm.rules \
     /usr/lib/udev/rules.d/99-thunderbolt-pm.rules
 
@@ -28,17 +30,13 @@ install -Dm644 /ctx/power/default-wifi-powersave-on.conf \
 systemctl enable powertop.service
 
 ### ── ASPM tuning ──
-# Force stubborn devices to enable ASPM on boot and after resume
+# Force stubborn devices to enable ASPM on boot which allows higher package states
+# source: https://www.reddit.com/r/linux_on_mac/comments/1hl5mac/comment/m99qo53/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
 install -Dm755 /ctx/power/aspm-tune.sh /usr/bin/aspm-tune.sh
 
 install -Dm644 /ctx/power/aspm-tune.service \
     /usr/lib/systemd/system/aspm-tune.service
 systemctl enable aspm-tune.service
-
-#Not using suspend resume version anymore as it isn't necessary
-#install -Dm644 /ctx/power/aspm-tune-resume.service \
-#    /usr/lib/systemd/system/aspm-tune-resume.service
-#systemctl enable aspm-tune-resume.service
 
 ### ── Power audit script (manual troubleshooting tool) ──
 install -Dm755 /ctx/power/power-audit.sh /usr/bin/power-audit.sh

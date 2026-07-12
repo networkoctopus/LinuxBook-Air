@@ -15,6 +15,7 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     /ctx/15-packages.sh && \
     /ctx/20-power.sh && \
     /ctx/30-fixes.sh && \
+    /ctx/35-mactahoe-theme.sh && \
     /ctx/40-post-deploy-setup.sh && \
     /ctx/50-updates.sh && \
     /ctx/90-initramfs.sh && \

@@ -17,7 +17,6 @@ FLATPAKS=(
     org.gnome.Contacts
     org.gnome.Evolution
     org.gnome.Extensions
-    org.gnome.Firmware
     org.gnome.Logs
     org.gnome.Loupe
     org.gnome.Maps
