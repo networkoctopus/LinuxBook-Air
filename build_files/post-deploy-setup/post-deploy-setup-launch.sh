@@ -26,9 +26,9 @@ CHOICES=$(zenity --list \
     --text="<big><b>Welcome to LinuxBook-Air</b></big>\n\nChoose the optional components to set up.\n\nKeyboard remapping is powered by <b>Toshy</b>, created by RedBearAK:\nhttps://github.com/RedBearAK/Toshy" \
     --checklist \
     --column="Install" --column="Component" \
-    TRUE "Toshy keyboard shortcuts" \
-    TRUE "WhiteSur desktop theme with MacTahoe icons" \
-    TRUE "MacTahoe Firefox styling" \
+    TRUE "Toshy keyboard remapping" \
+    TRUE "MacOS desktop theme and icons" \
+    TRUE "MacOS Firefox styling" \
     TRUE "GNOME Flatpak applications" \
     --separator="|" \
     --ok-label="Install selected" \
@@ -49,16 +49,16 @@ fi
 SETUP_ARGS=()
 WARNING_TEXT="<big><b>A terminal window will open for setup.</b></big>"
 
-if [[ "$CHOICES" == *"Toshy keyboard shortcuts"* ]]; then
+if [[ "$CHOICES" == *"Toshy keyboard remapping"* ]]; then
     SETUP_ARGS+=(--toshy)
     WARNING_TEXT+="\n\nToshy may ask for your sudo password and a few confirmations. When asked whether <b>this machine has been updated recently</b>, answer <b>yes</b>."
 fi
 
-if [[ "$CHOICES" == *"WhiteSur desktop theme with MacTahoe icons"* ]]; then
+if [[ "$CHOICES" == *"MacOS desktop theme and icons"* ]]; then
     SETUP_ARGS+=(--desktop-theme)
 fi
 
-if [[ "$CHOICES" == *"MacTahoe Firefox styling"* ]]; then
+if [[ "$CHOICES" == *"MacOS Firefox styling"* ]]; then
     SETUP_ARGS+=(--firefox)
     WARNING_TEXT+="\n\nPlease close Firefox before continuing. If Firefox has not been opened before, setup will open it once to initialise its profile; close it again after it loads."
 fi
@@ -90,7 +90,7 @@ if [[ -f "$DONE_FILE" ]]; then
     zenity --info \
         --title="LinuxBook-Air Setup Complete" \
         --window-icon="preferences-system" \
-        --text="The selected LinuxBook-Air components are installed.\n\nMacTahoe and WhiteSur themes are available in GNOME Tweaks under the Appearance menu." \
+        --text="The selected LinuxBook-Air components are installed.\n\nMacTahoe and WhiteSur themes are available in GNOME Tweaks app, under the Appearance menu." \
         --width=560 2>/dev/null
 else
     zenity --error \
