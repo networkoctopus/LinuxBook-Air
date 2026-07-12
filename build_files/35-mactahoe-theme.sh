@@ -87,21 +87,21 @@ test -f /usr/share/backgrounds/MacTahoe/MacTahoe-night.jpeg
 test -f /usr/share/gnome-background-properties/MacTahoe.xml
 rm -rf "$REPO_DIR/.git"
 
-### Set the desktop defaults for new users. MacTahoe continues to provide the
-# paired wallpaper, icons, and cursor; WhiteSur provides GTK and Shell styling.
+### Keep the stock Adwaita desktop appearance for new users, with dark style
+# and the paired MacTahoe wallpaper. The first-run setup offers MacOS styling.
 mkdir -p /etc/dconf/db/local.d
 cat > /etc/dconf/db/local.d/10-mactahoe-theme <<'EOF'
 [org/gnome/desktop/interface]
 color-scheme='prefer-dark'
-gtk-theme='WhiteSur-Dark'
-icon-theme='MacTahoe'
-cursor-theme='MacTahoe'
+gtk-theme='Adwaita-dark'
+icon-theme='Adwaita'
+cursor-theme='Adwaita'
 
 [org/gnome/desktop/wm/preferences]
 button-layout='appmenu:minimize,maximize,close'
 
 [org/gnome/shell/extensions/user-theme]
-name='WhiteSur-Dark'
+name=''
 
 [org/gnome/desktop/background]
 picture-uri='file:///usr/share/backgrounds/MacTahoe/MacTahoe-day.jpeg'
