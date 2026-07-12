@@ -18,6 +18,20 @@ GNOME_SETUP_DONE="${XDG_CONFIG_HOME:-$HOME/.config}/gnome-initial-setup-done"
 SETUP_SCRIPT="/usr/libexec/linuxbook-air-post-deploy-setup.sh"
 LOG_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/linuxbook-air/initial-setup.log"
 WINDOW_ICON="/usr/share/icons/hicolor/scalable/apps/linuxbook-air-setup.svg"
+WINDOW_CLASS="linuxbook-air-setup"
+
+# Zenity uses its own application ID under Wayland, which prevents GNOME Shell
+# from matching its windows to LinuxBook-Air Setup's desktop entry. Use its X11
+# backend when available so the custom WM_CLASS, launcher entry, and dock icon
+# remain associated across each dialog.
+zenity_lba() {
+    if [[ -n "${DISPLAY:-}" ]]; then
+        GDK_BACKEND=x11 command zenity \
+            --name="$WINDOW_CLASS" --class="$WINDOW_CLASS" "$@"
+    else
+        command zenity --window-icon="$WINDOW_ICON" "$@"
+    fi
+}
 
 mkdir -p "$STATE_DIR"
 
@@ -35,7 +49,7 @@ if [[ "$FORCE_RUN" == false ]]; then
 fi
 
 if [[ "$FORCE_RUN" == true ]]; then
-    MANAGE_ACTION=$(zenity --list \
+    MANAGE_ACTION=$(zenity_lba --list \
         --title="LinuxBook-Air Setup" \
         --window-icon="$WINDOW_ICON" \
         --text="Choose what you would like to do." \
@@ -47,7 +61,7 @@ if [[ "$FORCE_RUN" == true ]]; then
         --width=520 --height=280 2>/dev/null) || exit 0
 
     if [[ "$MANAGE_ACTION" == "Remove optional components" ]]; then
-        REMOVE_CHOICES=$(zenity --list \
+        REMOVE_CHOICES=$(zenity_lba --list \
             --title="Remove LinuxBook-Air Components" \
             --window-icon="$WINDOW_ICON" \
             --text="Choose what to remove or reset.\nDesktop themes remain installed and can be selected again in Tweaks.\nGNOME Flatpak applications can be uninstalled in GNOME Software." \
@@ -77,12 +91,12 @@ if [[ "$FORCE_RUN" == true ]]; then
         fi
 
         if ! command -v ptyxis >/dev/null 2>&1; then
-            zenity --error --title="Removal Incomplete" \
+            zenity_lba --error --title="Removal Incomplete" \
                 --window-icon="$WINDOW_ICON" \
                 --text="The Ptyxis terminal is required to remove interactive components." 2>/dev/null
             exit 1
         fi
-        zenity --warning --title="LinuxBook-Air Setup" \
+        zenity_lba --warning --title="LinuxBook-Air Setup" \
             --window-icon="$WINDOW_ICON" --text="$REMOVE_WARNING" \
             --ok-label="Open removal" --width=560 2>/dev/null || exit 0
 
@@ -91,11 +105,11 @@ if [[ "$FORCE_RUN" == true ]]; then
             -- bash "$SETUP_SCRIPT" "${REMOVE_ARGS[@]}"
 
         if [[ -f "$SUCCESS_FILE" ]]; then
-            zenity --info --title="Removal Complete" \
+            zenity_lba --info --title="Removal Complete" \
                 --window-icon="$WINDOW_ICON" \
                 --text="The selected optional components were removed or reset." 2>/dev/null
         else
-            zenity --error --title="Removal Incomplete" \
+            zenity_lba --error --title="Removal Incomplete" \
                 --window-icon="$WINDOW_ICON" \
                 --text="Removal could not finish.\n\nDetails: $LOG_FILE" 2>/dev/null
         fi
@@ -103,7 +117,7 @@ if [[ "$FORCE_RUN" == true ]]; then
     fi
 fi
 
-CHOICES=$(zenity --list \
+CHOICES=$(zenity_lba --list \
     --title="LinuxBook-Air Setup" \
     --window-icon="$WINDOW_ICON" \
     --text="<big><b>Welcome to LinuxBook-Air</b></big>\n\nChoose the optional components to set up. You can install, remove, or reset them later by opening <b>LinuxBook-Air Setup</b> from the application launcher.\nGNOME Flatpak applications can be uninstalled in GNOME Software.\n\nKeyboard remapping is powered by <b>Toshy</b>, created by RedBearAK:\nhttps://github.com/RedBearAK/Toshy\n\nMacOS themes are created by <b>vinceliuice</b>:\nhttps://github.com/vinceliuice" \
@@ -119,7 +133,7 @@ CHOICES=$(zenity --list \
     --width=760 --height=620 2>/dev/null) || exit 0
 
 if [[ -z "$CHOICES" ]]; then
-    if zenity --question \
+    if zenity_lba --question \
         --title="Skip LinuxBook-Air Setup?" \
         --window-icon="$WINDOW_ICON" \
         --text="No components were selected. Stop offering this setup on future logins?" \
@@ -151,14 +165,14 @@ if [[ "$CHOICES" == *"GNOME Flatpak applications"* ]]; then
 fi
 
 if ! command -v ptyxis >/dev/null 2>&1; then
-    zenity --error \
+    zenity_lba --error \
         --title="LinuxBook-Air Setup Incomplete" \
         --window-icon="$WINDOW_ICON" \
         --text="The Ptyxis terminal is required to run the interactive setup. Setup will be offered again next login." 2>/dev/null
     exit 1
 fi
 
-zenity --warning \
+zenity_lba --warning \
     --title="LinuxBook-Air Setup" \
     --window-icon="$WINDOW_ICON" \
     --text="$WARNING_TEXT" \
@@ -171,13 +185,13 @@ ptyxis --standalone \
     -- bash "$SETUP_SCRIPT" "${SETUP_ARGS[@]}"
 
 if [[ -f "$SUCCESS_FILE" ]]; then
-    zenity --info \
+    zenity_lba --info \
         --title="LinuxBook-Air Setup Complete" \
         --window-icon="$WINDOW_ICON" \
         --text="The selected LinuxBook-Air components are installed.\n\nMacTahoe and WhiteSur themes are available in GNOME Tweaks app, under the Appearance menu." \
         --width=560 2>/dev/null
 else
-    zenity --error \
+    zenity_lba --error \
         --title="LinuxBook-Air Setup Incomplete" \
         --window-icon="$WINDOW_ICON" \
         --text="Setup could not finish. It will be offered again next login.\n\nDetails: $LOG_FILE" 2>/dev/null
