@@ -2,7 +2,7 @@
 
 An immutable Fedora GNOME image for Intel MacBook Airs, built on [Universal Blue's `silverblue-main`](https://github.com/ublue-os/main/pkgs/container/silverblue-main). Currently tracking [Fedora 44](https://fedoraproject.org).
 
-I got tired of layering required packages onto stock Silverblue—not the ideal approach with bootc/rpm-ostree. So I created this instead. It's been my daily driver since early 2026, and I decided it was worth sharing.
+Instead of layering required packages onto stock Silverblue — which isn't the preferred convention with bootc/rpm-ostree - I created this instead. Along with helping me learn how to create bootc images - this became my daily driver since early 2026 - so I decided it was worth sharing.
 
 This little project started with the great [Universal Blue image-template](https://github.com/ublue-os/image-template). The aim was to create a great out-of-box Fedora Silverblue experience on my 11-year-old, 11-inch Mac: all drivers included, kept close to stock GNOME, with a particular focus on **maximising battery life**.
 
