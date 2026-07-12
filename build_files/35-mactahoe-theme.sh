@@ -21,6 +21,27 @@ test -f /usr/share/themes/MacTahoe-Dark/gtk-3.0/gtk.css
 test -f /usr/share/themes/MacTahoe-Light/gnome-shell/gnome-shell.css
 test -f /usr/share/themes/MacTahoe-Dark/gnome-shell/gnome-shell.css
 
+### Install the WhiteSur light and dark GTK/Shell themes system-wide.
+# Extract the prebuilt desktop themes before applying its separate GDM tweak.
+WHITESUR_REPO_DIR="/tmp/WhiteSur-gtk-theme"
+git clone --depth=1 https://github.com/vinceliuice/WhiteSur-gtk-theme.git \
+    "$WHITESUR_REPO_DIR"
+tar -xJf "$WHITESUR_REPO_DIR/release/WhiteSur-Light.tar.xz" -C /usr/share/themes
+tar -xJf "$WHITESUR_REPO_DIR/release/WhiteSur-Dark.tar.xz" -C /usr/share/themes
+
+test -f /usr/share/themes/WhiteSur-Light/gtk-3.0/gtk.css
+test -f /usr/share/themes/WhiteSur-Dark/gtk-3.0/gtk.css
+test -f /usr/share/themes/WhiteSur-Light/gnome-shell/gnome-shell.css
+test -f /usr/share/themes/WhiteSur-Dark/gnome-shell/gnome-shell.css
+
+# GDM is a system component, so install its WhiteSur theme during the image
+# build rather than asking an unprivileged user to modify it at first login.
+# Use the same MacTahoe day image as the default user desktop background.
+test -f "$REPO_DIR/wallpaper/MacTahoe-day.jpeg"
+"$WHITESUR_REPO_DIR/tweaks.sh" --silent-mode -g \
+    -b "$REPO_DIR/wallpaper/MacTahoe-day.jpeg"
+rm -rf "$WHITESUR_REPO_DIR"
+
 ### Install the companion icon and cursor themes system-wide.
 ICON_REPO_DIR="/tmp/MacTahoe-icon-theme"
 git clone --depth=1 https://github.com/vinceliuice/MacTahoe-icon-theme.git \
@@ -44,10 +65,18 @@ test -f /usr/share/backgrounds/MacTahoe/MacTahoe-night.jpeg
 test -f /usr/share/gnome-background-properties/MacTahoe.xml
 rm -rf "$REPO_DIR/.git"
 
-### Use the MacTahoe wallpaper for new users while leaving GNOME's GTK and
-# Shell themes at their defaults. The installed themes remain selectable.
+### Set the desktop defaults for new users. MacTahoe continues to provide the
+# paired wallpaper, icons, and cursor; WhiteSur provides GTK and Shell styling.
 mkdir -p /etc/dconf/db/local.d
 cat > /etc/dconf/db/local.d/10-mactahoe-theme <<'EOF'
+[org/gnome/desktop/interface]
+gtk-theme='WhiteSur-Light'
+icon-theme='MacTahoe'
+cursor-theme='MacTahoe'
+
+[org/gnome/shell/extensions/user-theme]
+name='WhiteSur-Light'
+
 [org/gnome/desktop/background]
 picture-uri='file:///usr/share/backgrounds/MacTahoe/MacTahoe-day.jpeg'
 picture-uri-dark='file:///usr/share/backgrounds/MacTahoe/MacTahoe-night.jpeg'

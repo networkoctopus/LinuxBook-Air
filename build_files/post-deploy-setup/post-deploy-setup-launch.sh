@@ -27,6 +27,7 @@ CHOICES=$(zenity --list \
     --checklist \
     --column="Install" --column="Component" \
     TRUE "Toshy keyboard shortcuts" \
+    TRUE "WhiteSur desktop theme with MacTahoe icons" \
     TRUE "MacTahoe Firefox styling" \
     TRUE "GNOME Flatpak applications" \
     --separator="|" \
@@ -51,6 +52,10 @@ WARNING_TEXT="<big><b>A terminal window will open for setup.</b></big>"
 if [[ "$CHOICES" == *"Toshy keyboard shortcuts"* ]]; then
     SETUP_ARGS+=(--toshy)
     WARNING_TEXT+="\n\nToshy may ask for your sudo password and a few confirmations. When asked whether <b>this machine has been updated recently</b>, answer <b>yes</b>."
+fi
+
+if [[ "$CHOICES" == *"WhiteSur desktop theme with MacTahoe icons"* ]]; then
+    SETUP_ARGS+=(--desktop-theme)
 fi
 
 if [[ "$CHOICES" == *"MacTahoe Firefox styling"* ]]; then
@@ -85,7 +90,7 @@ if [[ -f "$DONE_FILE" ]]; then
     zenity --info \
         --title="LinuxBook-Air Setup Complete" \
         --window-icon="preferences-system" \
-        --text="The selected LinuxBook-Air components are installed.\n\nAdditional MacTahoe themes are available in GNOME Tweaks under the Appearance menu." \
+        --text="The selected LinuxBook-Air components are installed.\n\nMacTahoe and WhiteSur themes are available in GNOME Tweaks under the Appearance menu." \
         --width=560 2>/dev/null
 else
     zenity --error \

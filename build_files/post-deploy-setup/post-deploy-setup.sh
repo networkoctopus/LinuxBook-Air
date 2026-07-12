@@ -6,6 +6,7 @@
 set -uo pipefail
 
 INSTALL_TOSHY=false
+INSTALL_DESKTOP_THEME=false
 INSTALL_FIREFOX=false
 INSTALL_APPS=false
 TOSHY_INSTALLED_NOW=false
@@ -13,12 +14,14 @@ TOSHY_INSTALLED_NOW=false
 # Running without arguments retains the original install-everything behavior.
 if (( $# == 0 )); then
     INSTALL_TOSHY=true
+    INSTALL_DESKTOP_THEME=true
     INSTALL_FIREFOX=true
     INSTALL_APPS=true
 else
     while (( $# )); do
         case "$1" in
             --toshy) INSTALL_TOSHY=true ;;
+            --desktop-theme) INSTALL_DESKTOP_THEME=true ;;
             --firefox) INSTALL_FIREFOX=true ;;
             --apps) INSTALL_APPS=true ;;
             *) printf 'Unknown setup option: %s\n' "$1" >&2; exit 2 ;;
@@ -163,6 +166,25 @@ if [[ "$TOSHY_INSTALLED_NOW" == true ]]; then
     fi
 fi
 
+if [[ "$INSTALL_DESKTOP_THEME" == true ]]; then
+    progress 53 "Applying the WhiteSur and MacTahoe desktop theme…"
+
+    if [[ "$(gsettings get org.gnome.desktop.interface color-scheme)" == "'prefer-dark'" ]]; then
+        WHITESUR_THEME="WhiteSur-Dark"
+    else
+        WHITESUR_THEME="WhiteSur-Light"
+    fi
+
+    gsettings set org.gnome.desktop.interface gtk-theme "$WHITESUR_THEME" || \
+        fail "The WhiteSur GTK theme could not be applied."
+    gsettings set org.gnome.desktop.interface icon-theme 'MacTahoe' || \
+        fail "The MacTahoe icon theme could not be applied."
+    gsettings set org.gnome.desktop.interface cursor-theme 'MacTahoe' || \
+        fail "The MacTahoe cursor theme could not be applied."
+    gsettings set org.gnome.shell.extensions.user-theme name "$WHITESUR_THEME" || \
+        fail "The WhiteSur Shell theme could not be applied."
+fi
+
 if [[ "$INSTALL_FIREFOX" == true && ! -f "$FIREFOX_SENTINEL" ]]; then
     progress 55 "Preparing Firefox for MacTahoe styling…"
 
@@ -235,5 +257,5 @@ fi
 
 touch "$DONE_FILE"
 progress 100 "Setup complete. The selected components are ready."
-printf '\nAdditional MacTahoe themes are available in GNOME Tweaks under Appearance.\n'
+printf '\nMacTahoe and WhiteSur themes are available in GNOME Tweaks under Appearance.\n'
 wait_to_close

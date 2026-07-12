@@ -18,11 +18,11 @@ At 50% display brightness with Wi-Fi enabled and no apps open, my machine draws 
 - PCIe ASPM tuning, firmware compatibility tweaks, and a MacBook Air display wake fix, Automatic [PowerTOP](https://github.com/fenrus75/powertop) tuning, Wi-Fi power saving 
 - A smaller, hardware-focused initramfs that reduced boot time from 40 to ~25 seconds on the test machine. Because bootc updates apply on reboot, the faster boot was worth pursuing. The initramfs in [`silverblue-main`](https://github.com/ublue-os/main) is 230MB+ whereas this image's initramfs is ~75MB.
 - Mac-like shortcuts provided by the fantastic [Toshy](https://github.com/RedBearAK/Toshy) project
-- A first-run GUI that lets you choose whether to install Toshy, apply the MacTahoe Firefox styling, and restore GNOME Flatpak apps that came with Silverblue from [Flathub](https://flathub.org/) - Firefox is already included in the image.
+- A first-run GUI that lets you choose whether to install Toshy, apply the WhiteSur desktop theme with MacTahoe icons and Firefox styling, and restore GNOME Flatpak apps that came with Silverblue from [Flathub](https://flathub.org/) - Firefox is already included in the image.
 - [mbpfan](https://github.com/linux-on-mac/mbpfan) for MacBook fan control
 - [uupd](https://github.com/ublue-os/uupd) automatic image and Flatpak updates
 - GNOME extensions installed and enabled system-wide: [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/), [Xremap](https://extensions.gnome.org/extension/5060/xremap/), [Vitals](https://extensions.gnome.org/extension/1460/vitals/), [User Themes](https://extensions.gnome.org/extension/19/user-themes/), [Dash to Dock](https://extensions.gnome.org/extension/307/dash-to-dock/), and the [uupd Indicator](https://github.com/Vyachean/uupd-indicator) with restart-required notifications
-- Optional [MacTahoe GTK and Firefox CSS styling](https://github.com/vinceliuice/MacTahoe-gtk-theme), selectable [MacTahoe icon and cursor themes](https://github.com/vinceliuice/MacTahoe-icon-theme), and day/night wallpapers that follow dark mode; GNOME otherwise keeps its default appearance
+- [WhiteSur GTK, Shell, and GDM styling](https://github.com/vinceliuice/WhiteSur-gtk-theme), [MacTahoe icons and cursors](https://github.com/vinceliuice/MacTahoe-icon-theme), optional [MacTahoe Firefox CSS](https://github.com/vinceliuice/MacTahoe-gtk-theme), and MacTahoe day/night wallpapers that follow dark mode, with the day image also used by GDM
 
 
 ## Hardware compatibility
@@ -81,7 +81,7 @@ Note: GitHub requires you to be signed in to download workflow artifacts.
 > [!CAUTION]
 > Installing an operating system will erase the selected disk. Back up anything important and carefully confirm the target drive in Anaconda.
 
-On the first login, LinuxBook-Air waits for GNOME Initial Setup to finish, then lets you choose whether to install Toshy, apply the Firefox styling, and restore the standard GNOME Flatpak application set. You can install any combination, postpone setup, or permanently skip it.
+On the first login, LinuxBook-Air waits for GNOME Initial Setup to finish, then lets you choose whether to install Toshy, apply the WhiteSur desktop theme with MacTahoe icons and Firefox styling, and restore the standard GNOME Flatpak application set. You can install any combination, postpone setup, or permanently skip it.
 
 ## Updates
 

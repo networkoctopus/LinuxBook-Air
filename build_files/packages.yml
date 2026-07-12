@@ -32,6 +32,7 @@ toshy_deps:
 # Theme native dependencies
 theme_deps:
   - gnome-tweaks
+  - ImageMagick
   - sassc
   - glib2-devel
 
