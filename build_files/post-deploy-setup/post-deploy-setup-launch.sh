@@ -55,7 +55,7 @@ fi
 
 if [[ "$CHOICES" == *"MacTahoe Firefox styling"* ]]; then
     SETUP_ARGS+=(--firefox)
-    WARNING_TEXT+="\n\nA Firefox profile will be prepared and styled. Please close Firefox before continuing."
+    WARNING_TEXT+="\n\nPlease close Firefox before continuing. If Firefox has not been opened before, setup will open it once to initialise its profile; close it again after it loads."
 fi
 
 if [[ "$CHOICES" == *"GNOME Flatpak applications"* ]]; then

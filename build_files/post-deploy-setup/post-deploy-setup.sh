@@ -33,6 +33,7 @@ LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/linuxbook-air"
 LOG_FILE="$LOG_DIR/initial-setup.log"
 FIREFOX_SENTINEL="${XDG_CONFIG_HOME:-$HOME/.config}/mactahoe/.firefox-done"
 FIREFOX_REPO="/usr/share/MacTahoe-gtk-theme"
+FIREFOX_PROFILES_INI="$HOME/.mozilla/firefox/profiles.ini"
 TOSHY_CONFIG="$HOME/.config/toshy/toshy_config.py"
 
 FLATPAKS=(
@@ -73,6 +74,34 @@ fail() {
     progress 100 "$1"
     wait_to_close
     exit 1
+}
+
+firefox_is_running() {
+    pgrep -u "$UID" -x firefox >/dev/null 2>&1 || \
+        pgrep -u "$UID" -x firefox-bin >/dev/null 2>&1
+}
+
+confirm_firefox_closed() {
+    printf '\nClose every Firefox window, then press Enter to continue.\n'
+    read -r -p "Firefox is closed: press Enter… " || true
+
+    if firefox_is_running; then
+        progress 58 "Stopping lingering Firefox processes…"
+        pkill -TERM -u "$UID" -x firefox 2>/dev/null || true
+        pkill -TERM -u "$UID" -x firefox-bin 2>/dev/null || true
+
+        for _ in {1..10}; do
+            firefox_is_running || break
+            sleep 1
+        done
+
+        if firefox_is_running; then
+            pkill -KILL -u "$UID" -x firefox 2>/dev/null || true
+            pkill -KILL -u "$UID" -x firefox-bin 2>/dev/null || true
+        fi
+    fi
+
+    firefox_is_running && fail "Firefox could not be stopped."
 }
 
 if [[ "$INSTALL_TOSHY" == true && ! -f "$TOSHY_CONFIG" ]]; then
@@ -137,20 +166,35 @@ fi
 if [[ "$INSTALL_FIREFOX" == true && ! -f "$FIREFOX_SENTINEL" ]]; then
     progress 55 "Preparing Firefox for MacTahoe styling…"
 
-    if pidof firefox firefox-bin >/dev/null 2>&1; then
-        printf '\nFirefox is running. Close it to continue setup.\n'
-        while pidof firefox firefox-bin >/dev/null 2>&1; do
-            sleep 2
+    if firefox_is_running; then
+        confirm_firefox_closed
+    fi
+
+    if [[ ! -s "$FIREFOX_PROFILES_INI" ]]; then
+        printf '\nFirefox needs to open once to create its profile.\n'
+        printf 'When the Firefox window appears, wait for it to load and then close it.\n\n'
+        MOZ_ENABLE_WAYLAND=1 firefox >> "$LOG_FILE" 2>&1 &
+        FIREFOX_LAUNCH_PID=$!
+
+        # Firefox creates the profile during startup. Wait for that to happen
+        # before asking the user to close it and continuing with tweaks.sh.
+        for _ in {1..30}; do
+            [[ -s "$FIREFOX_PROFILES_INI" ]] && break
+            kill -0 "$FIREFOX_LAUNCH_PID" 2>/dev/null || break
+            sleep 1
         done
+
+        if [[ ! -s "$FIREFOX_PROFILES_INI" ]]; then
+            wait "$FIREFOX_LAUNCH_PID" 2>/dev/null || true
+            fail "Firefox could not initialise its default profile. See $LOG_FILE"
+        fi
+
+        printf 'Firefox is ready.\n'
+        confirm_firefox_closed
+        wait "$FIREFOX_LAUNCH_PID" 2>/dev/null || true
     fi
 
-    if ! compgen -G "${HOME}/.mozilla/firefox/*.default*" > /dev/null 2>&1; then
-        MOZ_HEADLESS=1 firefox --headless -CreateProfile default-release \
-            >> "$LOG_FILE" 2>&1 || \
-            fail "Firefox could not create its default profile."
-    fi
-
-    if ! compgen -G "${HOME}/.mozilla/firefox/*.default*" > /dev/null 2>&1; then
+    if [[ ! -s "$FIREFOX_PROFILES_INI" ]]; then
         fail "Firefox did not create a usable default profile."
     fi
 
