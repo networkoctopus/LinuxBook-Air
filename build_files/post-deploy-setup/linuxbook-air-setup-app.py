@@ -123,8 +123,8 @@ class SetupWindow(Gtk.ApplicationWindow):
             "Choose the optional components to set up. You can install, remove, or reset them later "
             "by opening Setup from the application launcher. GNOME Flatpak applications can be "
             "uninstalled in GNOME Software.\n\n"
-            "Setup works best when all other users are logged out, as Firefox running in another "
-            "user session may prevent Firefox styling from being applied."
+            "<b>Setup works best when all other users are logged out, as Firefox running in another "
+            "user session may prevent Firefox styling from being applied.</b>"
         ))
 
         self.install_checks = {
