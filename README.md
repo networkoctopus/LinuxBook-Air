@@ -135,7 +135,7 @@ The test machine once failed to return from suspend and required a hard reboot. 
 ## To do
 
 - Add an option to the Setup app to disable all power tunings
-- Add a temporary Thunderbolt enable/disable control, potentially through GNOME's system status menu in the top bar
+- Investigate adding a temporary Thunderbolt enable/disable control, potentially through GNOME's system status menu in the top bar. 
 
 ## Disclaimer
 
