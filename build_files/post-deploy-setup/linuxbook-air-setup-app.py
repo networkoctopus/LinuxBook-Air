@@ -124,7 +124,8 @@ class SetupWindow(Gtk.ApplicationWindow):
             "by opening Setup from the application launcher. GNOME Flatpak applications can be "
             "uninstalled in GNOME Software.\n\n"
             "<b>Setup works best when all other users are logged out, as Firefox running in another "
-            "user session may prevent Firefox styling from being applied.</b>"
+            "user session may prevent Firefox styling from being applied.</b>",
+            markup=True,
         ))
 
         self.install_checks = {
