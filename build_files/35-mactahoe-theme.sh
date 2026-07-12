@@ -38,7 +38,8 @@ test -f /usr/share/themes/WhiteSur-Dark/gnome-shell/gnome-shell.css
 # build rather than asking an unprivileged user to modify it at first login.
 # Use the same MacTahoe day image as the default user desktop background.
 test -f "$REPO_DIR/wallpaper/MacTahoe-day.jpeg"
-"$WHITESUR_REPO_DIR/tweaks.sh" --silent-mode -g \
+USER=root HOME=/var/roothome \
+    "$WHITESUR_REPO_DIR/tweaks.sh" --silent-mode -g \
     -b "$REPO_DIR/wallpaper/MacTahoe-day.jpeg"
 rm -rf "$WHITESUR_REPO_DIR"
 
