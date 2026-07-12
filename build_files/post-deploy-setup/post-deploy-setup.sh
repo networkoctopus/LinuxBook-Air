@@ -75,6 +75,7 @@ progress() {
 }
 
 wait_to_close() {
+    [[ "${LINUXBOOK_AIR_EMBEDDED:-0}" == 1 ]] && return
     printf '\n'
     read -r -p "Press Enter to close this window… " || true
 }

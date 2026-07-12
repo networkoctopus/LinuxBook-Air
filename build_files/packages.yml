@@ -24,8 +24,10 @@ toshy_deps:
   - python3-dbus
   - python3-devel
   - python3-pip
+  - python3-gobject
   - python3-tkinter
   - systemd-devel
+  - vte291-gtk4
   - wayland-devel
   - zenity
 

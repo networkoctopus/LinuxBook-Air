@@ -11,11 +11,14 @@ install -Dm755 /ctx/post-deploy-setup/post-deploy-setup.sh \
 install -Dm755 /ctx/post-deploy-setup/post-deploy-setup-launch.sh \
     /usr/libexec/linuxbook-air-post-deploy-setup-launch.sh
 
+install -Dm755 /ctx/post-deploy-setup/linuxbook-air-setup-app.py \
+    /usr/libexec/linuxbook-air-setup-app.py
+
 install -Dm644 /ctx/post-deploy-setup/post-deploy-setup.service \
     /usr/lib/systemd/user/linuxbook-air-post-deploy-setup.service
 
 install -Dm644 /ctx/post-deploy-setup/linuxbook-air-setup.desktop \
-    /usr/share/applications/linuxbook-air-setup.desktop
+    /usr/share/applications/io.github.networkoctopus.LinuxBookAirSetup.desktop
 
 install -Dm644 /ctx/post-deploy-setup/linuxbook-air-setup.svg \
     /usr/share/icons/hicolor/scalable/apps/linuxbook-air-setup.svg
