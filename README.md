@@ -104,7 +104,7 @@ sudo power-audit.sh
 
 Very occasionally—roughly once every couple of weeks on the test machine—Wi-Fi may disconnect during a heavy download. Rejoining the network restores it. This appears to be caused by Wi-Fi power saving, which saves around **0.5–0.8 W**.
 
-If the extra savings aren't worth the occasional interruption, create a NetworkManager override:
+To revert, create a NetworkManager override which MAY help:
 
 ```bash
 sudo nano /etc/NetworkManager/conf.d/wifi-powersave.conf
