@@ -1,0 +1,22 @@
+# Allow build scripts to be referenced without being copied into the final image
+FROM scratch AS ctx
+COPY build_files /
+
+FROM quay.io/fedora-asahi-remix-atomic-desktops/silverblue:44
+
+### SHARED DESKTOP CUSTOMISATIONS
+# Apple Silicon hardware support, power configuration, fixes, and initramfs are
+# provided by the Fedora Asahi Remix base image.
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=tmpfs,dst=/tmp \
+    mkdir -p /var/roothome && \
+    /ctx/15-packages.sh && \
+    /ctx/35-mactahoe-theme.sh && \
+    /ctx/40-post-deploy-setup.sh && \
+    /ctx/50-updates.sh && \
+    /ctx/99-cleanup.sh
+
+### LINTING
+RUN bootc container lint

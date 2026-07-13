@@ -5,6 +5,8 @@
 
 An immutable Fedora GNOME image for the Intel MacBook Air, built on [Universal Blue's `silverblue-main`](https://github.com/ublue-os/main/pkgs/container/silverblue-main). Currently tracking [Fedora 44](https://fedoraproject.org).
 
+An Apple Silicon edition is also built from the experimental [Fedora Asahi Remix Atomic Silverblue image](https://github.com/fedora-asahi-remix-atomic-desktops/images), sharing the desktop customisations without applying the Intel hardware workarounds.
+
 Instead of layering required packages onto stock Silverblue — which isn't the preferred convention with bootc/rpm-ostree - I created this instead. Along with serving as a playground on bootc - this became my daily driver since early 2026 - so I decided it was worth sharing.
 
 This little project started with the great [Universal Blue image-template](https://github.com/ublue-os/image-template). The aim was to create a reliable out-of-box Fedora Silverblue experience on my 11-year-old, 11-inch Mac: all drivers included, kept close to stock GNOME, with a particular focus on **maximising battery life**.
@@ -12,7 +14,7 @@ This little project started with the great [Universal Blue image-template](https
 At 50% display brightness with Wi-Fi enabled and no apps open, my machine draws around **4–4.5 W**, or roughly 10 hours of battery life (if you aren't doing anything else, of course :P).  Not that I use my machine this way, but for reference - with auto-brightness off and brightness at minimum, power usage drops to **3.3–3.5 W!**  Battery condition, open apps, Wi-Fi usage, peripherals, and exact hardware all contribute.
 
 > [!IMPORTANT]
-> **Thunderbolt is intentionally disabled to save power.** If you rely on that port, this image is not for you. I don't use mine, so the [multiple watts—and hours—of power savings](https://wiki.archlinux.org/title/Mac/Troubleshooting#Disabling_Thunderbolt) are worth it].
+> **Thunderbolt is intentionally disabled in the Intel edition to save power.** If you rely on that port, the Intel image is not for you. I don't use mine, so the [multiple watts—and hours—of power savings](https://wiki.archlinux.org/title/Mac/Troubleshooting#Disabling_Thunderbolt) are worth it].
 
 ## What's in this image - credits to the maintainers of these projects
 
@@ -45,6 +47,22 @@ These closely related Intel MacBook Airs are reasonable candidates, but are **un
 
 Do not assume that other MacBooks or MacBook Pros are compatible. The trimmed initramfs omits drivers and storage features this specific machine does not need.
 
+### Apple Silicon edition
+
+The Apple Silicon image is published separately as:
+
+```text
+ghcr.io/networkoctopus/linuxbook-air-asahi:latest
+```
+
+It uses [`quay.io/fedora-asahi-remix-atomic-desktops/silverblue:44`](https://quay.io/repository/fedora-asahi-remix-atomic-desktops/silverblue) as its base. It includes the shared packages, GNOME extensions, themes, first-run setup, and automatic-update configuration from this project. The Intel kmods, power tuning, hardware fixes, and custom initramfs are intentionally omitted because the Asahi base provides the platform support.
+
+The upstream Atomic Asahi images describe themselves as unofficial and experimental. They are separate from the stable Fedora Asahi Remix distribution and are not endorsed by the Asahi developers.
+
+Both variants are built from the default branch. The Intel build runs on an x86-64 runner using `Containerfile`; the Asahi build runs natively on an ARM64 runner using `Containerfile.asahi`.
+
+To publish a test build before merging a feature branch, open the **Build container image** workflow in GitHub Actions, choose **Run workflow**, select the branch, enable **Publish the built images to GHCR**, and leave the tag as `testing`. This publishes `linuxbook-air:testing` and `linuxbook-air-asahi:testing` without replacing either `latest` image.
+
 ## Switch from another bootc system
 
 If you already run a bootc-managed system, inspect its current state first:
@@ -53,10 +71,19 @@ If you already run a bootc-managed system, inspect its current state first:
 sudo bootc status
 ```
 
-Then switch to LinuxBook-Air and reboot into the new deployment:
+Then switch to the image for your hardware and reboot into the new deployment.
+
+For an Intel MacBook Air:
 
 ```bash
 sudo bootc switch ghcr.io/networkoctopus/linuxbook-air:latest
+sudo systemctl reboot
+```
+
+For an Apple Silicon Mac already running a bootc-managed Fedora Asahi system:
+
+```bash
+sudo bootc switch ghcr.io/networkoctopus/linuxbook-air-asahi:latest
 sudo systemctl reboot
 ```
 
@@ -79,6 +106,8 @@ sudo systemctl reboot
 
 The installer ISO is built weekly. Open the [Build disk images workflow](https://github.com/networkoctopus/LinuxBook-Air/actions/workflows/build-iso.yml), select the newest successful scheduled run, and download the artifact from the **Artifacts** section at the bottom of the run page. Extract the archive to get the Anaconda ISO, then write it to a USB drive with your preferred image writer.
 
+This ISO is for Intel Macs only. Apple Silicon machines must first be installed using the Fedora Asahi Remix installation process; the Asahi bootc image can then be selected from an existing bootc-managed installation.
+
 Note: GitHub requires you to be signed in to download workflow artifacts.
 
 > [!CAUTION]
@@ -90,9 +119,9 @@ The bootc image is rebuilt **twice weekly**, every Wednesday and Sunday. Manual 
 
 `uupd` checks for and stages operating-system and Flatpak updates automatically. The panel indicator shows update activity and tells you when a reboot is needed to enter the staged deployment. GNOME Software updates are disabled because `uupd` handles them.
 
-## Check the power tuning
+## Check the Intel power tuning
 
-The image includes a diagnostic script that checks the power configuration and reports tunables that are active, missing, or unexpected:
+The Intel image includes a diagnostic script that checks the power configuration and reports tunables that are active, missing, or unexpected:
 
 ```bash
 sudo power-audit.sh
