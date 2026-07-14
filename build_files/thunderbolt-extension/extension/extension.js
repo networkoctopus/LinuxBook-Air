@@ -1,4 +1,5 @@
 import Gio from 'gi://Gio';
+import GObject from 'gi://GObject';
 import St from 'gi://St';
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -10,9 +11,12 @@ const CONTROL = '/usr/libexec/linuxbook-air-thunderbolt-control';
 const ENABLED_COLOR = '#ed333b';
 const DISABLED_COLOR = '#ffffff';
 
+const ThunderboltIndicator = GObject.registerClass({
+    GTypeName: 'LinuxBookAirThunderboltIndicator',
+},
 class ThunderboltIndicator extends PanelMenu.Button {
-    constructor(extension) {
-        super(0.0, extension.metadata.name, false);
+    _init(extension) {
+        super._init(0.0, extension.metadata.name, false);
 
         this._enabled = false;
         this._busy = false;
@@ -131,7 +135,7 @@ class ThunderboltIndicator extends PanelMenu.Button {
         this._destroyed = true;
         super.destroy();
     }
-}
+});
 
 export default class ThunderboltExtension extends Extension {
     enable() {
