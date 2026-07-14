@@ -128,6 +128,18 @@ class SetupWindow(Gtk.ApplicationWindow):
             markup=True,
         ))
 
+        if not self.force_run:
+            self.dont_open_check = Gtk.CheckButton(label="Don't open this again")
+            self.dont_open_check.connect("toggled", self._toggle_dont_open_again)
+            page.append(self.dont_open_check)
+
+            self.dont_open_hint = self.body(
+                "<small>You can rerun Setup anytime from the GNOME Activities overview.</small>",
+                markup=True,
+            )
+            self.dont_open_hint.set_visible(False)
+            page.append(self.dont_open_hint)
+
         self.install_checks = {
             "--toshy": Gtk.CheckButton(label="Toshy keyboard remapping"),
             "--desktop-theme": Gtk.CheckButton(label="MacOS desktop theme and icons"),
@@ -151,18 +163,6 @@ class SetupWindow(Gtk.ApplicationWindow):
             markup=True,
         )
         page.append(credits)
-
-        if not self.force_run:
-            self.dont_open_check = Gtk.CheckButton(label="Don't open this again")
-            self.dont_open_check.connect("toggled", self._toggle_dont_open_again)
-            page.append(self.dont_open_check)
-
-            self.dont_open_hint = self.body(
-                "<small>You can rerun Setup anytime from the GNOME Activities overview.</small>",
-                markup=True,
-            )
-            self.dont_open_hint.set_visible(False)
-            page.append(self.dont_open_hint)
 
         row = self.button_row()
         if self.force_run:
