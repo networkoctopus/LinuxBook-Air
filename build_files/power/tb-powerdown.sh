@@ -48,4 +48,17 @@ for dev in $TB_DEVS; do
     fi
 done
 
-logger -t "$LOG_TAG" "action=powerdown result=success"
+remaining=""
+for dev in $TB_DEVS; do
+    if [ -e "/sys/bus/pci/devices/0000:$dev" ]; then
+        remaining="${remaining}${remaining:+,}0000:$dev"
+    fi
+done
+
+if [ -n "$remaining" ]; then
+    logger -p daemon.err -t "$LOG_TAG" \
+        "action=powerdown result=failed remaining_devices=$remaining"
+    exit 1
+fi
+
+logger -t "$LOG_TAG" "action=powerdown result=success remaining_devices=none"

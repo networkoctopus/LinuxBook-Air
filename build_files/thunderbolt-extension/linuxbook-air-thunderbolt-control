@@ -24,11 +24,22 @@ is_falcon_ridge_device() {
     [[ "$vendor" == "0x8086" && ( "$device" == "0x156a" || "$device" == "0x156b" ) ]]
 }
 
-controller_present() {
+nhi_present() {
     local path
 
     for path in /sys/bus/pci/devices/*; do
         if is_falcon_ridge_device "$path" && [[ $(<"${path}/device") == "0x156a" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+falcon_ridge_present() {
+    local path
+
+    for path in /sys/bus/pci/devices/*; do
+        if is_falcon_ridge_device "$path"; then
             return 0
         fi
     done
@@ -49,13 +60,14 @@ thunderbolt_pci_addresses() {
 }
 
 log_snapshot() {
-    local stage="$1" marker="absent" module="unloaded" controller="absent"
+    local stage="$1" marker="absent" module="unloaded" nhi="absent" hierarchy="absent"
 
     [[ -e "$STATE_FILE" ]] && marker="present"
     lsmod | grep -q '^thunderbolt ' && module="loaded"
-    controller_present && controller="present"
+    nhi_present && nhi="present"
+    falcon_ridge_present && hierarchy="present"
     log_event daemon.info \
-        "stage=$stage marker=$marker module=$module controller=$controller pci_devices=$(thunderbolt_pci_addresses)"
+        "stage=$stage marker=$marker module=$module nhi=$nhi hierarchy=$hierarchy pci_devices=$(thunderbolt_pci_addresses)"
 }
 
 thunderbolt_storage_present() {
@@ -74,7 +86,7 @@ thunderbolt_storage_present() {
 }
 
 show_status() {
-    if [[ -e "$STATE_FILE" ]] || controller_present; then
+    if [[ -e "$STATE_FILE" ]] || falcon_ridge_present; then
         printf 'enabled\n'
     else
         printf 'disabled\n'
@@ -134,7 +146,7 @@ enable_thunderbolt() {
         log_event daemon.info "action=enable stage=pci-rescan attempt=$attempt"
         printf '1\n' > /sys/bus/pci/rescan
         udevadm settle
-        if controller_present; then
+        if nhi_present; then
             log_event daemon.info \
                 "action=enable stage=pci-rescan attempt=$attempt controller=present"
             break
@@ -144,7 +156,7 @@ enable_thunderbolt() {
         sleep 1
     done
 
-    if ! controller_present; then
+    if ! nhi_present; then
         printf 'The Thunderbolt controller did not appear after the PCI rescan.\n' >&2
         return 1
     fi
@@ -157,16 +169,16 @@ enable_thunderbolt() {
 }
 
 disable_thunderbolt() {
-    local status
+    local reason="${1:-user}" status
 
-    log_event daemon.notice "action=disable stage=start"
+    log_event daemon.notice "action=disable reason=$reason stage=start"
     log_snapshot "disable-before"
 
     disable_failed() {
         status=$?
         trap - ERR
         log_event daemon.err \
-            "action=disable result=failed exit_status=$status line=${BASH_LINENO[0]}"
+            "action=disable reason=$reason result=failed exit_status=$status line=${BASH_LINENO[0]}"
         log_snapshot "disable-failed"
         exit "$status"
     }
@@ -199,8 +211,9 @@ disable_thunderbolt() {
     log_event daemon.info "action=disable stage=marker-removed"
     "$POWERDOWN_HELPER"
 
-    if controller_present; then
-        log_event daemon.err "action=disable result=failed reason=pci-hierarchy-still-present"
+    if falcon_ridge_present; then
+        log_event daemon.err \
+            "action=disable reason=$reason result=failed failure=pci-hierarchy-still-present"
         log_snapshot "disable-incomplete"
         printf 'The Thunderbolt PCI hierarchy could not be powered down.\n' >&2
         exit 1
@@ -208,14 +221,14 @@ disable_thunderbolt() {
 
     trap - ERR
     log_snapshot "disable-after"
-    log_event daemon.notice "action=disable result=success"
+    log_event daemon.notice "action=disable reason=$reason result=success"
 }
 
 case "${1:-}" in
     status)
         show_status
         ;;
-    enable|disable)
+    enable|disable|prepare-suspend)
         require_root
         install -d -m 0755 "$STATE_DIR"
         exec 9> "$CONTROL_LOCK"
@@ -223,12 +236,16 @@ case "${1:-}" in
         log_event daemon.info "action=$1 stage=control-lock-acquired uid=$EUID"
         if [[ "$1" == "enable" ]]; then
             enable_thunderbolt
+        elif [[ "$1" == "disable" ]]; then
+            disable_thunderbolt user
+        elif [[ -e "$STATE_FILE" ]] || lsmod | grep -q '^thunderbolt ' || falcon_ridge_present; then
+            disable_thunderbolt suspend
         else
-            disable_thunderbolt
+            log_event daemon.info "action=prepare-suspend result=skipped reason=already-powered-down"
         fi
         ;;
     *)
-        printf 'Usage: %s {status|enable|disable}\n' "$0" >&2
+        printf 'Usage: %s {status|enable|disable|prepare-suspend}\n' "$0" >&2
         exit 2
         ;;
 esac

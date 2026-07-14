@@ -27,6 +27,11 @@ if [[ $(id -u) != 0 ]]; then
     exit 1
 fi
 
+TB_FEATURE_INSTALLED=0
+if [[ -x /usr/libexec/linuxbook-air-thunderbolt-control ]]; then
+    TB_FEATURE_INSTALLED=1
+fi
+
 # ─── PRE-FLIGHT CHECKLIST ──────────────────────────────────────────────────
 echo -e "\n${HEADER}╔══════════════════════════════════════════╗${RESET}"
 echo -e "${HEADER}║     MacBook Air Power Audit — Setup      ║${RESET}"
@@ -64,10 +69,14 @@ else
     fail "acpi_osi=!Darwin is NOT in /proc/cmdline"
 fi
 
-if grep -q 'pci=hpbussize=8' /proc/cmdline; then
+if [[ $TB_FEATURE_INSTALLED -eq 1 ]] && grep -q 'pci=hpbussize=8' /proc/cmdline; then
     pass "pci=hpbussize=8 is active (Thunderbolt hot-plug bus space reserved)"
+elif [[ $TB_FEATURE_INSTALLED -eq 1 ]]; then
+    fail "Thunderbolt control is installed but pci=hpbussize=8 is NOT in /proc/cmdline"
+elif grep -q 'pci=hpbussize=8' /proc/cmdline; then
+    warn "pci=hpbussize=8 is active although the optional Thunderbolt control is not installed"
 else
-    fail "pci=hpbussize=8 is NOT in /proc/cmdline"
+    info "Optional Thunderbolt hot-plug bus reservation is not installed"
 fi
 
 info "Full cmdline: $(cat /proc/cmdline)"
@@ -78,21 +87,36 @@ else
     fail "kargs.d toml missing at /usr/lib/bootc/kargs.d/linuxbook-air.toml"
 fi
 
+if [[ $TB_FEATURE_INSTALLED -eq 1 ]]; then
+    if [[ -f /usr/lib/bootc/kargs.d/linuxbook-air-thunderbolt.toml ]]; then
+        pass "Thunderbolt kargs.d toml exists: $(cat /usr/lib/bootc/kargs.d/linuxbook-air-thunderbolt.toml)"
+    else
+        fail "Thunderbolt kargs.d toml missing at /usr/lib/bootc/kargs.d/linuxbook-air-thunderbolt.toml"
+    fi
+fi
+
 # ─── 2. CONFIG FILES ───────────────────────────────────────────────────────
 header "Config Files"
 
 FILES=(
     "/usr/lib/modprobe.d/thunderbolt-blacklist.conf"
     "/usr/lib/udev/rules.d/99-thunderbolt-pm.rules"
-    "/usr/libexec/linuxbook-air-thunderbolt-control"
-    "/usr/share/polkit-1/actions/io.github.networkoctopus.linuxbookair.thunderbolt.policy"
-    "/usr/share/gnome-shell/extensions/thunderbolt@linuxbook-air.local/extension.js"
+    "/usr/lib/systemd/system/linuxbook-air-thunderbolt-powerdown.service"
     "/usr/lib/NetworkManager/conf.d/default-wifi-powersave-on.conf"
     "/usr/lib/systemd/system/powertop.service"
     "/usr/lib/systemd/system/aspm-tune.service"
     #"/usr/lib/systemd/system/aspm-tune-resume.service"
     "/usr/bin/aspm-tune.sh"
 )
+
+if [[ $TB_FEATURE_INSTALLED -eq 1 ]]; then
+    FILES+=(
+        "/usr/libexec/linuxbook-air-thunderbolt-control"
+        "/usr/lib/systemd/system/linuxbook-air-thunderbolt-sleep.service"
+        "/usr/share/polkit-1/actions/io.github.networkoctopus.linuxbookair.thunderbolt.policy"
+        "/usr/share/gnome-shell/extensions/thunderbolt@linuxbook-air.local/extension.js"
+    )
+fi
 
 for f in "${FILES[@]}"; do
     if [[ -f "$f" ]]; then
@@ -126,9 +150,17 @@ else
 fi
 
 if grep -q 'install thunderbolt /bin/false' /usr/lib/modprobe.d/thunderbolt-blacklist.conf 2>/dev/null; then
-    fail "Hard block (install thunderbolt /bin/false) prevents temporary enable"
+    if [[ $TB_FEATURE_INSTALLED -eq 1 ]]; then
+        fail "Hard block (install thunderbolt /bin/false) prevents temporary enable"
+    else
+        pass "Hard Thunderbolt module block present"
+    fi
 elif grep -q 'blacklist thunderbolt' /usr/lib/modprobe.d/thunderbolt-blacklist.conf 2>/dev/null; then
-    pass "Soft blacklist present (automatic load blocked; explicit enable permitted)"
+    if [[ $TB_FEATURE_INSTALLED -eq 1 ]]; then
+        pass "Soft blacklist present (automatic load blocked; explicit enable permitted)"
+    else
+        pass "Soft Thunderbolt module blacklist present"
+    fi
 else
     fail "thunderbolt-blacklist.conf missing or empty"
 fi
@@ -148,14 +180,12 @@ for dev in "${TB_DEVS[@]}"; do
     if [[ -e "/sys/bus/pci/devices/$dev" ]]; then
         ctrl=$(cat /sys/bus/pci/devices/$dev/power/control 2>/dev/null)
         status=$(cat /sys/bus/pci/devices/$dev/power/runtime_status 2>/dev/null)
-        if [[ $TB_ENABLED -eq 1 && "$ctrl" == "on" ]]; then
+        if [[ $TB_ENABLED -eq 0 ]]; then
+            fail "$dev — still present (expected the Thunderbolt hierarchy to be removed)"
+        elif [[ "$ctrl" == "on" ]]; then
             pass "$dev — control=$ctrl status=$status (temporarily enabled)"
-        elif [[ $TB_ENABLED -eq 0 && "$ctrl" == "auto" ]]; then
-            pass "$dev — control=$ctrl status=$status"
         else
-            expected="auto"
-            [[ $TB_ENABLED -eq 1 ]] && expected="on"
-            fail "$dev — control=$ctrl (expected $expected) status=$status"
+            fail "$dev — control=$ctrl (expected on while temporarily enabled) status=$status"
         fi
     else
         info "$dev — not present on PCIe bus (expected if TB fully off)"
@@ -192,17 +222,27 @@ fi
 # ─── 5. SYSTEMD SERVICES ───────────────────────────────────────────────────
 header "Systemd Services"
 
-SERVICES=("powertop.service" "aspm-tune.service" #"aspm-tune-resume.service"
+SERVICES=(
+    "powertop.service"
+    "aspm-tune.service"
+    "linuxbook-air-thunderbolt-powerdown.service"
+    #"aspm-tune-resume.service"
 )
+if [[ $TB_FEATURE_INSTALLED -eq 1 ]]; then
+    SERVICES+=("linuxbook-air-thunderbolt-sleep.service")
+fi
 for svc in "${SERVICES[@]}"; do
     enabled=$(systemctl is-enabled "$svc" 2>/dev/null)
     active=$(systemctl is-active "$svc" 2>/dev/null)
 
     if [[ "$enabled" == "enabled" ]]; then
-        if [[ "$svc" == "powertop.service" || "$svc" == "aspm-tune-resume.service" ]]; then
-            # oneshot resume service — inactive is normal
+        if [[ "$svc" == "powertop.service" ||
+              "$svc" == "aspm-tune-resume.service" ||
+              "$svc" == "linuxbook-air-thunderbolt-powerdown.service" ||
+              "$svc" == "linuxbook-air-thunderbolt-sleep.service" ]]; then
+            # Oneshot service — inactive after successful completion is normal.
             if [[ "$active" == "inactive" || "$active" == "active" ]]; then
-                pass "$svc — enabled (oneshot resume, currently $active)"
+                pass "$svc — enabled (oneshot, currently $active)"
             else
                 fail "$svc — enabled but status: $active"
             fi

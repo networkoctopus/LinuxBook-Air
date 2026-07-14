@@ -50,6 +50,22 @@ class ThunderboltIndicator extends PanelMenu.Button {
                 this._refresh();
         });
 
+        // The system service powers Thunderbolt down before sleep. Refresh on
+        // resume so the top-bar colour immediately reflects that transition.
+        this._sleepSignalId = Gio.DBus.system.signal_subscribe(
+            'org.freedesktop.login1',
+            'org.freedesktop.login1.Manager',
+            'PrepareForSleep',
+            '/org/freedesktop/login1',
+            null,
+            Gio.DBusSignalFlags.NONE,
+            (_connection, _sender, _path, _interface, _signal, parameters) => {
+                const [preparingForSleep] = parameters.deepUnpack();
+                if (!preparingForSleep)
+                    this._refresh();
+            }
+        );
+
         this._refresh();
     }
 
@@ -63,7 +79,7 @@ class ThunderboltIndicator extends PanelMenu.Button {
             ? 'Disable Thunderbolt'
             : 'Enable Thunderbolt';
         this._powerItem.label.text = enabled
-            ? 'Higher power use while enabled'
+            ? 'Higher power use; disables before sleep'
             : 'Disabled by default to save power';
         this.accessible_name = enabled
             ? 'Thunderbolt enabled'
@@ -133,6 +149,10 @@ class ThunderboltIndicator extends PanelMenu.Button {
 
     destroy() {
         this._destroyed = true;
+        if (this._sleepSignalId) {
+            Gio.DBus.system.signal_unsubscribe(this._sleepSignalId);
+            this._sleepSignalId = 0;
+        }
         super.destroy();
     }
 });

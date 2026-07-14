@@ -12,7 +12,7 @@ This little project started with the great [Universal Blue image-template](https
 At 50% display brightness with Wi-Fi enabled and no apps open, my machine draws around **4–4.5 W**, or roughly 10 hours of battery life (if you aren't doing anything else, of course :P).  Not that I use my machine this way, but for reference - with auto-brightness off and brightness at minimum, power usage drops to **3.3–3.5 W!**  Battery condition, open apps, Wi-Fi usage, peripherals, and exact hardware all contribute.
 
 > [!IMPORTANT]
-> **Thunderbolt is disabled by default to save power.** The top-bar Thunderbolt indicator can temporarily enable it for the current boot. The icon is white while disabled and red while enabled as a reminder of the substantially higher power use. Disconnect Thunderbolt storage before disabling the port.
+> **Thunderbolt is disabled by default to save power.** The top-bar Thunderbolt indicator can temporarily enable it until it is switched off, the system sleeps, or the system reboots. The icon is white while disabled and red while enabled as a reminder of the substantially higher power use. Disconnect Thunderbolt storage before disabling the port; sleep is blocked if the hierarchy cannot be torn down safely.
 
 Thunderbolt control events are recorded in the system journal. For troubleshooting, run `sudo journalctl -b -t linuxbook-air-thunderbolt`.
 
@@ -27,7 +27,7 @@ Thunderbolt control events are recorded in the system journal. For troubleshooti
 - [mbpfan](https://github.com/linux-on-mac/mbpfan) for MacBook fan control
 - [uupd](https://github.com/ublue-os/uupd) automatic image and Flatpak updates
 - GNOME extensions installed and enabled system-wide: [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/), [Xremap](https://extensions.gnome.org/extension/5060/xremap/), [Vitals](https://extensions.gnome.org/extension/1460/vitals/), [User Themes](https://extensions.gnome.org/extension/19/user-themes/), [Dash to Dock](https://extensions.gnome.org/extension/307/dash-to-dock/), and the [uupd Indicator](https://github.com/Vyachean/uupd-indicator) with restart-required notifications
-- A top-bar Thunderbolt control that keeps the port powered down by default and can temporarily enable it after administrator authentication; rebooting restores the power-saving default
+- A top-bar Thunderbolt control that keeps the port powered down by default and can temporarily enable it after administrator authentication; sleep and reboot restore the power-saving default
 - [WhiteSur GTK, Shell, and GDM styling](https://github.com/vinceliuice/WhiteSur-gtk-theme), selectable [WhiteSur icons](https://github.com/vinceliuice/WhiteSur-icon-theme), [WhiteSur cursors](https://github.com/vinceliuice/WhiteSur-cursors), and [MacTahoe icons and cursors](https://github.com/vinceliuice/MacTahoe-icon-theme), optional [MacTahoe Firefox CSS](https://github.com/vinceliuice/MacTahoe-gtk-theme), and MacTahoe day/night wallpapers that follow dark mode, with the day image also used by GDM
 
 

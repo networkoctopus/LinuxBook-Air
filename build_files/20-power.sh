@@ -2,7 +2,7 @@
 set -ouex pipefail
 
 ### ── Kernel arguments ──
-# Tell firmware this is not macOS and reserve buses for Thunderbolt hot-plug.
+# Tell firmware this is not macOS (creates Linux-accessible AHCI paths).
 install -Dm644 /ctx/power/linuxbook-air.toml \
     /usr/lib/bootc/kargs.d/linuxbook-air.toml
 
@@ -20,33 +20,13 @@ install -Dm644 /ctx/power/99-thunderbolt-pm.rules \
 
 install -Dm755 /ctx/power/tb-powerdown.sh /usr/libexec/tb-powerdown.sh
 
-# Privileged backend used by the GNOME Shell Thunderbolt indicator
-install -Dm755 /ctx/thunderbolt-extension/linuxbook-air-thunderbolt-control \
-    /usr/libexec/linuxbook-air-thunderbolt-control
+install -Dm644 /ctx/power/linuxbook-air-thunderbolt-powerdown.service \
+    /usr/lib/systemd/system/linuxbook-air-thunderbolt-powerdown.service
+systemctl enable linuxbook-air-thunderbolt-powerdown.service
 
-install -Dm644 /ctx/thunderbolt-extension/io.github.networkoctopus.linuxbookair.thunderbolt.policy \
-    /usr/share/polkit-1/actions/io.github.networkoctopus.linuxbookair.thunderbolt.policy
-
-# Install and enable the LinuxBook-Air-specific GNOME Shell indicator. Keep
-# this out of 15-packages.sh because that shared stage is also used by Asahi.
-THUNDERBOLT_UUID="thunderbolt@linuxbook-air.local"
-THUNDERBOLT_EXTENSION_DIR="/usr/share/gnome-shell/extensions/${THUNDERBOLT_UUID}"
-install -d -m 0755 "$THUNDERBOLT_EXTENSION_DIR"
-cp -a /ctx/thunderbolt-extension/extension/. "$THUNDERBOLT_EXTENSION_DIR/"
-chmod -R a+rX "$THUNDERBOLT_EXTENSION_DIR"
-
-EXTENSIONS_DCONF="/etc/dconf/db/local.d/00-extensions"
-if ! grep -Fq "'${THUNDERBOLT_UUID}'" "$EXTENSIONS_DCONF"; then
-    sed -i \
-        "/^enabled-extensions=/ s/]$/, '${THUNDERBOLT_UUID}']/" \
-        "$EXTENSIONS_DCONF"
-fi
-grep -Fq "'${THUNDERBOLT_UUID}'" "$EXTENSIONS_DCONF"
-dconf update
-
-# These are supplied by the Fedora GNOME base image. Fail the image build if a
-# future base change removes a runtime dependency used by the control path.
-for runtime_cmd in flock logger lsmod modprobe pkexec udevadm; do
+# These are supplied by the Fedora base image. Fail the image build if a future
+# base change removes a dependency used by the always-disabled power-down path.
+for runtime_cmd in flock logger lsmod modprobe udevadm; do
     command -v "$runtime_cmd" >/dev/null
 done
 
