@@ -13,6 +13,14 @@ on:
       - '**/README.md'
   workflow_dispatch:
     inputs:
+      variant:
+        description: "Image variant to build"
+        required: true
+        default: "asahi"
+        type: choice
+        options:
+          - asahi
+          - intel
       publish:
         description: "Publish the built images to GHCR"
         required: true
@@ -33,26 +41,18 @@ env:
   PUBLISH_IMAGE: "${{ github.event_name != 'pull_request' && ((github.event_name == 'workflow_dispatch' && inputs.publish) || (github.event_name != 'workflow_dispatch' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) }}"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.brand_name}}-${{ inputs.stream_name }}
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.variant || 'automatic' }}-${{ inputs.tag || 'latest' }}
   cancel-in-progress: true
 
 jobs:
   build_push:
     name: Build and push ${{ matrix.variant }} image
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ matrix.variant == 'intel' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
 
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - variant: Intel
-            runner: ubuntu-24.04
-            containerfile: Containerfile
-            image_name: ${{ github.event.repository.name }}
-          - variant: Asahi
-            runner: ubuntu-24.04-arm
-            containerfile: Containerfile.asahi
-            image_name: ${{ github.event.repository.name }}-asahi
+        variant: ${{ fromJSON(github.event_name == 'workflow_dispatch' && format('["{0}"]', inputs.variant) || '["intel","asahi"]') }}
 
     permissions:
       contents: read
@@ -64,8 +64,14 @@ jobs:
         run: |
           # Lowercase the image uri
           echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> ${GITHUB_ENV}
-          IMAGE_NAME="${{ matrix.image_name }}"
+          IMAGE_NAME="${{ github.event.repository.name }}"
+          CONTAINERFILE="Containerfile"
+          if [[ "${{ matrix.variant }}" == "asahi" ]]; then
+            IMAGE_NAME="${IMAGE_NAME}-asahi"
+            CONTAINERFILE="Containerfile.asahi"
+          fi
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >> ${GITHUB_ENV}
+          echo "CONTAINERFILE=${CONTAINERFILE}" >> ${GITHUB_ENV}
 
       # These stage versions are pinned by https://github.com/renovatebot/renovate
       - name: Checkout
@@ -73,11 +79,11 @@ jobs:
 
       # This is optional, but if you see that your builds are way too big for the runners, you can enable this by uncommenting the following lines:
       - name: Maximize build space
-        if: matrix.variant == 'Intel'
+        if: matrix.variant == 'intel'
         uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6
 
       - name: Install ARM build dependencies
-        if: matrix.variant == 'Asahi'
+        if: matrix.variant == 'asahi'
         run: |
           sudo apt-get update
           sudo apt-get install -y buildah podman
@@ -110,7 +116,7 @@ jobs:
             org.opencontainers.image.created=${{ steps.date.outputs.date }}
             org.opencontainers.image.description=${{ env.IMAGE_DESC }}
             org.opencontainers.image.documentation=https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/README.md
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}/blob/${{ github.sha }}/${{ matrix.containerfile }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}/blob/${{ github.sha }}/${{ env.CONTAINERFILE }}
             org.opencontainers.image.title=${{ env.IMAGE_NAME }}
             org.opencontainers.image.url=https://github.com/${{ github.repository }}/tree/${{ github.sha }}
             org.opencontainers.image.vendor=${{ github.repository_owner }}
@@ -129,7 +135,7 @@ jobs:
         uses: redhat-actions/buildah-build@7a95fa7ee0f02d552a32753e7414641a04307056 # v2
         with:
           containerfiles: |
-            ${{ matrix.containerfile }}
+            ${{ env.CONTAINERFILE }}
           # Postfix image name with -custom to make it a little more descriptive
           # Syntax: https://docs.github.com/en/actions/learn-github-actions/expressions#format
           image: ${{ env.IMAGE_NAME }}

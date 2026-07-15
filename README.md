@@ -62,9 +62,9 @@ It uses [`quay.io/fedora-asahi-remix-atomic-desktops/silverblue:44`](https://qua
 
 The upstream Atomic Asahi images describe themselves as unofficial and experimental. They are separate from the stable Fedora Asahi Remix distribution and are not endorsed by the Asahi developers.
 
-Both variants are built from the default branch. The Intel build runs on an x86-64 runner using `Containerfile`; the Asahi build runs natively on an ARM64 runner using `Containerfile.asahi`.
+Automatic builds include both variants. The Intel build runs on an x86-64 runner using `Containerfile`; the Asahi build runs natively on an ARM64 runner using `Containerfile.asahi`.
 
-To publish a test build before merging a feature branch, open the **Build container image** workflow in GitHub Actions, choose **Run workflow**, select the branch, enable **Publish the built images to GHCR**, and leave the tag as `testing`. This publishes `linuxbook-air:testing` and `linuxbook-air-asahi:testing` without replacing either `latest` image.
+To publish a test build, open the **Build container image** workflow in GitHub Actions, choose **Run workflow**, select the `testing` branch and the Intel or Asahi variant, enable **Publish the built images to GHCR**, and leave the tag as `testing`. This publishes only the selected variant as either `linuxbook-air:testing` or `linuxbook-air-asahi:testing`, without replacing either `latest` image.
 
 ## Switch from another bootc system
 
