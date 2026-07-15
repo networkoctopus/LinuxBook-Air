@@ -19,6 +19,7 @@ class ThunderboltIndicator extends PanelMenu.Button {
         super._init(0.0, extension.metadata.name, false);
 
         this._enabled = false;
+        this._state = 'disabled';
         this._busy = false;
         this._destroyed = false;
 
@@ -69,26 +70,45 @@ class ThunderboltIndicator extends PanelMenu.Button {
         this._refresh();
     }
 
-    _setState(enabled) {
-        this._enabled = enabled;
-        this._icon.set_style(`color: ${enabled ? ENABLED_COLOR : DISABLED_COLOR};`);
-        this._statusItem.label.text = enabled
-            ? 'Thunderbolt is enabled'
-            : 'Thunderbolt is disabled';
-        this._actionItem.label.text = enabled
-            ? 'Disable Thunderbolt'
-            : 'Enable Thunderbolt';
-        this._powerItem.label.text = enabled
-            ? 'Higher power use; disables before sleep'
-            : 'Disabled by default to save power';
-        this.accessible_name = enabled
-            ? 'Thunderbolt enabled'
-            : 'Thunderbolt disabled';
+    _setState(state) {
+        const enabled = state === 'enabled';
+        const powerdownIncomplete = state === 'powerdown-incomplete';
+        const restartRequired = state === 'restart-required';
+        const drawingPower = enabled || powerdownIncomplete;
+
+        this._state = state;
+        this._enabled = drawingPower;
+        this._icon.set_style(`color: ${drawingPower ? ENABLED_COLOR : DISABLED_COLOR};`);
+        if (enabled) {
+            this._statusItem.label.text = 'Thunderbolt is enabled';
+            this._actionItem.label.text = 'Disable until restart';
+            this._powerItem.label.text = 'Higher power use; disables before sleep';
+        } else if (powerdownIncomplete) {
+            this._statusItem.label.text = 'Thunderbolt power-down is incomplete';
+            this._actionItem.label.text = 'Retry full power-down';
+            this._powerItem.label.text = 'Maximum power saving is not yet active';
+        } else if (restartRequired) {
+            this._statusItem.label.text = 'Thunderbolt is fully powered down';
+            this._actionItem.label.text = 'Restart required to enable';
+            this._powerItem.label.text = 'Maximum power saving is active';
+        } else {
+            this._statusItem.label.text = 'Thunderbolt is disabled';
+            this._actionItem.label.text = 'Enable Thunderbolt';
+            this._powerItem.label.text = 'Disabled by default to save power';
+        }
+        this._actionItem.setSensitive(!restartRequired && !this._busy);
+        this.accessible_name = drawingPower
+            ? powerdownIncomplete
+                ? 'Thunderbolt power-down incomplete'
+                : 'Thunderbolt enabled'
+            : restartRequired
+                ? 'Thunderbolt disabled until restart'
+                : 'Thunderbolt disabled';
     }
 
     _setBusy(busy) {
         this._busy = busy;
-        this._actionItem.setSensitive(!busy);
+        this._actionItem.setSensitive(!busy && this._state !== 'restart-required');
         if (busy) {
             this._statusItem.label.text = this._enabled
                 ? 'Disabling Thunderbolt…'
@@ -125,13 +145,16 @@ class ThunderboltIndicator extends PanelMenu.Button {
         this._spawn([CONTROL, 'status'], (successful, stdout) => {
             if (this._destroyed)
                 return;
-            if (successful)
-                this._setState(stdout === 'enabled');
+            if (successful && ['enabled', 'disabled', 'powerdown-incomplete', 'restart-required'].includes(stdout))
+                this._setState(stdout);
         });
     }
 
     _requestToggle() {
         if (this._busy)
+            return;
+
+        if (this._state === 'restart-required')
             return;
 
         const action = this._enabled ? 'disable' : 'enable';
@@ -143,6 +166,8 @@ class ThunderboltIndicator extends PanelMenu.Button {
             this._setBusy(false);
             if (!successful && stderr)
                 Main.notifyError('Thunderbolt', stderr);
+            else if (successful && action === 'disable')
+                Main.notify('Thunderbolt', 'Fully powered down. Restart required to enable it again.');
             this._refresh();
         });
     }

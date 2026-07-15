@@ -1,5 +1,5 @@
 [Unit]
-Description=Disable Thunderbolt before system sleep
+Description=Fully power down Thunderbolt before system sleep
 Before=sleep.target
 
 [Service]

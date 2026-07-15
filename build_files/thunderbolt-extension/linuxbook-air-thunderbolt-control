@@ -4,6 +4,7 @@ set -euo pipefail
 
 readonly STATE_DIR="/run/linuxbook-air"
 readonly STATE_FILE="${STATE_DIR}/thunderbolt-enabled"
+readonly RESTART_REQUIRED_FILE="${STATE_DIR}/thunderbolt-restart-required"
 readonly CONTROL_LOCK="${STATE_DIR}/thunderbolt-control.lock"
 readonly POWERDOWN_HELPER="/usr/libexec/tb-powerdown.sh"
 readonly LOG_TAG="linuxbook-air-thunderbolt"
@@ -60,14 +61,15 @@ thunderbolt_pci_addresses() {
 }
 
 log_snapshot() {
-    local stage="$1" marker="absent" module="unloaded" nhi="absent" hierarchy="absent"
+    local stage="$1" marker="absent" restart_required="no" module="unloaded" nhi="absent" hierarchy="absent"
 
     [[ -e "$STATE_FILE" ]] && marker="present"
+    [[ -e "$RESTART_REQUIRED_FILE" ]] && restart_required="yes"
     lsmod | grep -q '^thunderbolt ' && module="loaded"
     nhi_present && nhi="present"
     falcon_ridge_present && hierarchy="present"
     log_event daemon.info \
-        "stage=$stage marker=$marker module=$module nhi=$nhi hierarchy=$hierarchy pci_devices=$(thunderbolt_pci_addresses)"
+        "stage=$stage marker=$marker restart_required=$restart_required module=$module nhi=$nhi hierarchy=$hierarchy pci_devices=$(thunderbolt_pci_addresses)"
 }
 
 thunderbolt_storage_present() {
@@ -86,8 +88,14 @@ thunderbolt_storage_present() {
 }
 
 show_status() {
-    if [[ -e "$STATE_FILE" ]] || falcon_ridge_present; then
+    # The hardware is the source of truth. A stale marker must never make the
+    # panel claim that an inaccessible controller is enabled.
+    if nhi_present; then
         printf 'enabled\n'
+    elif falcon_ridge_present; then
+        printf 'powerdown-incomplete\n'
+    elif [[ -e "$RESTART_REQUIRED_FILE" ]]; then
+        printf 'restart-required\n'
     else
         printf 'disabled\n'
     fi
@@ -113,12 +121,26 @@ set_falcon_ridge_power_on() {
 }
 
 enable_thunderbolt() {
-    local attempt status
+    local attempt status reason="unexpected-error"
 
     log_event daemon.notice "action=enable stage=start"
     log_snapshot "enable-before"
 
+    if [[ -e "$RESTART_REQUIRED_FILE" ]]; then
+        log_event daemon.warning "action=enable result=refused reason=restart-required"
+        printf 'Thunderbolt has been fully powered down. Restart the computer before enabling it again.\n' >&2
+        return 1
+    fi
+
     install -d -m 0755 "$STATE_DIR"
+
+    # Recover from a marker left by an interrupted or older helper. The
+    # controller itself determines whether Thunderbolt is actually enabled.
+    if [[ -e "$STATE_FILE" ]] && ! falcon_ridge_present; then
+        rm -f "$STATE_FILE"
+        log_event daemon.warning "action=enable stage=stale-marker-removed"
+    fi
+
     : > "$STATE_FILE"
     chmod 0644 "$STATE_FILE"
     log_event daemon.info "action=enable stage=marker-created"
@@ -127,22 +149,46 @@ enable_thunderbolt() {
         status=$?
         trap - ERR
         log_event daemon.err \
-            "action=enable result=failed exit_status=$status line=${BASH_LINENO[0]}"
+            "action=enable result=failed reason=$reason exit_status=$status line=${BASH_LINENO[0]}"
+
         rm -f "$STATE_FILE"
+        log_event daemon.info "action=enable rollback=marker-removed"
+
+        if lsmod | grep -q '^thunderbolt_net '; then
+            if modprobe -r thunderbolt_net; then
+                log_event daemon.info "action=enable rollback=module-removed module=thunderbolt_net"
+            else
+                log_event daemon.warning "action=enable rollback=module-remove-failed module=thunderbolt_net"
+            fi
+        fi
+        if lsmod | grep -q '^thunderbolt '; then
+            if modprobe -r thunderbolt; then
+                log_event daemon.info "action=enable rollback=module-removed module=thunderbolt"
+            else
+                log_event daemon.warning "action=enable rollback=module-remove-failed module=thunderbolt"
+            fi
+        fi
+
         if ! "$POWERDOWN_HELPER"; then
             log_event daemon.err "action=enable rollback=powerdown-failed"
         fi
+
+        : > "$RESTART_REQUIRED_FILE"
+        chmod 0644 "$RESTART_REQUIRED_FILE"
+        log_event daemon.info "action=enable rollback=restart-required-marker-created"
         log_snapshot "enable-rollback"
         exit "$status"
     }
     trap enable_failed ERR
 
+    reason="module-load-failed"
     modprobe thunderbolt
     log_event daemon.info "action=enable stage=module-loaded module=thunderbolt"
 
-    # Falcon Ridge can take more than one scan to return from its low-power
-    # state. Keep this bounded so a hardware fault is reported to the user.
+    # The first rescan of a boot may make Falcon Ridge available. Once a full
+    # power-down has happened, RESTART_REQUIRED_FILE prevents futile retries.
     for attempt in 1 2 3; do
+        reason="pci-rescan-failed"
         log_event daemon.info "action=enable stage=pci-rescan attempt=$attempt"
         printf '1\n' > /sys/bus/pci/rescan
         udevadm settle
@@ -157,10 +203,12 @@ enable_thunderbolt() {
     done
 
     if ! nhi_present; then
-        printf 'The Thunderbolt controller did not appear after the PCI rescan.\n' >&2
-        return 1
+        printf 'The Thunderbolt controller did not appear after the PCI rescan. Restart the computer before trying again.\n' >&2
+        reason="controller-absent"
+        false
     fi
 
+    reason="runtime-pm-configuration-failed"
     set_falcon_ridge_power_on
     udevadm settle
     trap - ERR
@@ -218,6 +266,11 @@ disable_thunderbolt() {
         printf 'The Thunderbolt PCI hierarchy could not be powered down.\n' >&2
         exit 1
     fi
+
+    : > "$RESTART_REQUIRED_FILE"
+    chmod 0644 "$RESTART_REQUIRED_FILE"
+    log_event daemon.info \
+        "action=disable reason=$reason stage=restart-required-marker-created"
 
     trap - ERR
     log_snapshot "disable-after"

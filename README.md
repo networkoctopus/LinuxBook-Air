@@ -14,7 +14,7 @@ This little project started with the great [Universal Blue image-template](https
 At 50% display brightness with Wi-Fi enabled and no apps open, my machine draws around **4–4.5 W**, or roughly 10 hours of battery life (if you aren't doing anything else, of course :P).  Not that I use my machine this way, but for reference - with auto-brightness off and brightness at minimum, power usage drops to **3.3–3.5 W!**  Battery condition, open apps, Wi-Fi usage, peripherals, and exact hardware all contribute.
 
 > [!IMPORTANT]
-> **Thunderbolt is disabled by default to save power.** The top-bar Thunderbolt indicator can temporarily enable it until it is switched off, the system sleeps, or the system reboots. The icon is white while disabled and red while enabled as a reminder of the substantially higher power use. Disconnect Thunderbolt storage before disabling the port; sleep is blocked if the hierarchy cannot be torn down safely.
+> **Thunderbolt is disabled by default to save power.** The top-bar Thunderbolt indicator can temporarily enable it until it is switched off, the system sleeps, or the system reboots. A full power-down cannot be reversed on this Falcon Ridge controller without restarting the computer. The icon is white while disabled and red while enabled as a reminder of the substantially higher power use. Disconnect Thunderbolt storage before disabling the port; sleep is blocked if the hierarchy cannot be torn down safely.
 
 Thunderbolt control events are recorded in the system journal. For troubleshooting, run `sudo journalctl -b -t linuxbook-air-thunderbolt`.
 
@@ -29,7 +29,7 @@ Thunderbolt control events are recorded in the system journal. For troubleshooti
 - [mbpfan](https://github.com/linux-on-mac/mbpfan) for MacBook fan control
 - [uupd](https://github.com/ublue-os/uupd) automatic image and Flatpak updates
 - GNOME extensions installed and enabled system-wide: [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/), [Xremap](https://extensions.gnome.org/extension/5060/xremap/), [Vitals](https://extensions.gnome.org/extension/1460/vitals/), [User Themes](https://extensions.gnome.org/extension/19/user-themes/), [Dash to Dock](https://extensions.gnome.org/extension/307/dash-to-dock/), and the [uupd Indicator](https://github.com/Vyachean/uupd-indicator) with restart-required notifications
-- A top-bar Thunderbolt control that keeps the port powered down by default and can temporarily enable it after administrator authentication; sleep and reboot restore the power-saving default
+- A top-bar Thunderbolt control that keeps the port powered down by default and can temporarily enable it after administrator authentication; disabling it or entering sleep restores the maximum-power-saving state until the next restart
 - [WhiteSur GTK, Shell, and GDM styling](https://github.com/vinceliuice/WhiteSur-gtk-theme), selectable [WhiteSur icons](https://github.com/vinceliuice/WhiteSur-icon-theme), [WhiteSur cursors](https://github.com/vinceliuice/WhiteSur-cursors), and [MacTahoe icons and cursors](https://github.com/vinceliuice/MacTahoe-icon-theme), optional [MacTahoe Firefox CSS](https://github.com/vinceliuice/MacTahoe-gtk-theme), and MacTahoe day/night wallpapers that follow dark mode, with the day image also used by GDM
 
 
@@ -158,7 +158,7 @@ sudo systemctl restart NetworkManager
 
 ### Rare failure to resume from suspend
 
-The test machine once failed to return from suspend and required a hard reboot. The cause has not been identified or reproduced reliably.
+During early testing of temporary Thunderbolt enablement, the machine failed to return from suspend and required a hard reboot. The Thunderbolt control now treats enablement as a one-shot session and fully powers the controller down before sleep; it is not restored after resume. This feature remains hardware-specific and experimental, so save work before testing it with new peripherals.
 
 ## To do
 
