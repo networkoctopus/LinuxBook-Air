@@ -5,7 +5,7 @@
 
 **A love letter to old hardware, delivered as a bootc image**
 
-Silverletter is based on [Universal Blue's `silverblue-main`](https://github.com/ublue-os/main/pkgs/container/silverblue-main) and Fedora Silverblue. It is intended for selected Intel-based MacBook Air computers and currently tracks [Fedora 44](https://fedoraproject.org).
+Silverletter is based on [Universal Blue's `silverblue-main`](https://github.com/ublue-os/main/pkgs/container/silverblue-main). It is intended for selected Intel-based MacBook Air computers and currently tracks [Fedora 44](https://fedoraproject.org).
 
 This project began as a playground for bootc and the excellent [Universal Blue image-template](https://github.com/ublue-os/image-template). Instead of repeatedly layering the packages my old laptop needed onto stock Silverblue, I built a complete image around them. It became my daily driver in early 2026 and eventually felt worth sharing.
 
