@@ -114,6 +114,8 @@ if [[ $TB_FEATURE_INSTALLED -eq 1 ]]; then
         "/usr/libexec/silverletter-thunderbolt-control"
         "/usr/lib/systemd/system/silverletter-thunderbolt-sleep.service"
         "/usr/lib/systemd/system/silverletter-thunderbolt-hotplug.service"
+        "/usr/lib/systemd/system/silverletter-thunderbolt-disconnect.service"
+        "/usr/lib/systemd/system/silverletter-thunderbolt-disconnect.path"
         "/usr/lib/tmpfiles.d/silverletter-thunderbolt.conf"
         "/usr/share/gnome-shell/extensions/thunderbolt@silverletter.local/extension.js"
     )
@@ -230,7 +232,10 @@ SERVICES=(
     #"aspm-tune-resume.service"
 )
 if [[ $TB_FEATURE_INSTALLED -eq 1 ]]; then
-    SERVICES+=("silverletter-thunderbolt-sleep.service")
+    SERVICES+=(
+        "silverletter-thunderbolt-sleep.service"
+        "silverletter-thunderbolt-disconnect.path"
+    )
 fi
 for svc in "${SERVICES[@]}"; do
     enabled=$(systemctl is-enabled "$svc" 2>/dev/null)

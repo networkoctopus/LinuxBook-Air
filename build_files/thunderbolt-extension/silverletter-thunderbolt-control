@@ -5,6 +5,7 @@ set -euo pipefail
 readonly STATE_DIR="/run/silverletter"
 readonly STATE_FILE="${STATE_DIR}/thunderbolt-enabled"
 readonly STATE_EVENT_FILE="${STATE_DIR}/thunderbolt-state-changed"
+readonly DISCONNECT_REQUEST_FILE="${STATE_DIR}/thunderbolt-disconnect-request"
 readonly SUSPEND_FILE="${STATE_DIR}/thunderbolt-suspending"
 readonly LEGACY_RESTART_FILE="${STATE_DIR}/thunderbolt-restart-required"
 readonly CONTROL_LOCK="${STATE_DIR}/thunderbolt-control.lock"
@@ -168,11 +169,87 @@ claim_hotplug() {
     notify_state_change
 }
 
-# PCI removal does not alter the active session. It only wakes the GNOME
-# indicator so it can report that the external adapter is no longer present.
-notify_hotplug_change() {
+# Runs directly from udev. Record the event and let the systemd path unit do
+# the delayed check outside the udev worker after the PCI removal cascade.
+request_hotplug_release() {
     require_root
+    install -d -m 0755 "$STATE_DIR"
+    printf '%s\n' "$$" > "$DISCONNECT_REQUEST_FILE"
     notify_state_change
+}
+
+release_hotplug() {
+    # One physical unplug produces several PCI remove events. Allow the whole
+    # external subtree to settle before deciding whether the port is unused.
+    sleep 2
+
+    if [[ -e "$SUSPEND_FILE" ]]; then
+        log_event daemon.info "action=disconnect result=skipped reason=suspend-in-progress"
+        return 0
+    fi
+
+    if external_device_present; then
+        log_event daemon.info "action=disconnect result=skipped reason=external-device-present"
+        notify_state_change
+        return 0
+    fi
+
+    if [[ ! -e "$STATE_FILE" ]]; then
+        log_event daemon.info "action=disconnect result=skipped reason=not-claimed"
+        notify_state_change
+        return 0
+    fi
+
+    if thunderbolt_storage_present; then
+        log_event daemon.err "action=disconnect result=refused reason=thunderbolt-storage-present"
+        notify_state_change
+        return 1
+    fi
+
+    # Dropping the claim before invoking the existing helper makes teardown
+    # interruptible: a rapid reconnect recreates the marker and the helper
+    # cancels at one of its guarded checkpoints.
+    rm -f "$STATE_FILE" "$LEGACY_RESTART_FILE"
+    notify_state_change
+    log_event daemon.notice "action=disconnect stage=claim-released"
+
+    if ! "$POWERDOWN_HELPER"; then
+        log_event daemon.err "action=disconnect result=failed reason=powerdown-helper"
+        notify_state_change
+        return 1
+    fi
+
+    if [[ -e "$STATE_FILE" ]] || external_device_present; then
+        log_event daemon.notice "action=disconnect result=cancelled reason=device-reconnected"
+        notify_state_change
+        return 0
+    fi
+
+    if falcon_ridge_present; then
+        log_event daemon.err "action=disconnect result=failed reason=pci-hierarchy-still-present"
+        log_snapshot "disconnect-incomplete"
+        notify_state_change
+        return 1
+    fi
+
+    if lsmod | grep -q '^thunderbolt_net '; then
+        if modprobe -r thunderbolt_net; then
+            log_event daemon.info "action=disconnect stage=module-removed module=thunderbolt_net"
+        else
+            log_event daemon.warning "action=disconnect stage=module-remove-failed module=thunderbolt_net"
+        fi
+    fi
+    if lsmod | grep -q '^thunderbolt '; then
+        if modprobe -r thunderbolt; then
+            log_event daemon.info "action=disconnect stage=module-removed module=thunderbolt"
+        else
+            log_event daemon.warning "action=disconnect stage=module-remove-failed module=thunderbolt"
+        fi
+    fi
+
+    notify_state_change
+    log_snapshot "disconnect-after"
+    log_event daemon.notice "action=disconnect result=success"
 }
 
 activate_hotplug() {
@@ -218,7 +295,7 @@ activate_hotplug() {
     flock -u 8
     notify_state_change
     log_snapshot "activate-after"
-    log_event daemon.notice "action=activate result=success lifetime=until-suspend-or-reboot"
+    log_event daemon.notice "action=activate result=success lifetime=while-device-present"
 }
 
 power_down_thunderbolt() {
@@ -307,10 +384,10 @@ case "${1:-}" in
     hotplug-claim)
         claim_hotplug
         ;;
-    hotplug-notify)
-        notify_hotplug_change
+    hotplug-release-request)
+        request_hotplug_release
         ;;
-    hotplug-activate|prepare-suspend|resume)
+    hotplug-activate|hotplug-release|prepare-suspend|resume)
         require_root
         install -d -m 0755 "$STATE_DIR"
         exec 9> "$CONTROL_LOCK"
@@ -318,12 +395,13 @@ case "${1:-}" in
         log_event daemon.info "action=$1 stage=control-lock-acquired uid=$EUID"
         case "$1" in
             hotplug-activate) activate_hotplug ;;
+            hotplug-release) release_hotplug ;;
             prepare-suspend) prepare_suspend ;;
             resume) resume_from_suspend ;;
         esac
         ;;
     *)
-        printf 'Usage: %s {status|hotplug-claim|hotplug-notify|hotplug-activate|prepare-suspend|resume}\n' "$0" >&2
+        printf 'Usage: %s {status|hotplug-claim|hotplug-release-request|hotplug-activate|hotplug-release|prepare-suspend|resume}\n' "$0" >&2
         exit 2
         ;;
 esac
