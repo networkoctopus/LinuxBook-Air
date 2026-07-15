@@ -1,7 +1,12 @@
 [Unit]
 Description=Power down Thunderbolt after the external device disconnects
+StartLimitIntervalSec=600
+StartLimitBurst=2
 
 [Service]
 Type=oneshot
 ExecStart=/usr/libexec/silverletter-thunderbolt-control hotplug-release
-TimeoutStartSec=45
+# Falcon Ridge sysfs removal can block for tens of seconds per bridge.
+TimeoutStartSec=180
+Restart=on-failure
+RestartSec=5

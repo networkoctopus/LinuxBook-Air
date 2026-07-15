@@ -51,6 +51,7 @@ for dev in $TB_DEVS; do
     fi
     path="/sys/bus/pci/devices/0000:$dev"
     if [ -e "$path/remove" ]; then
+        logger -t "$LOG_TAG" "action=powerdown stage=pci-remove-start device=0000:$dev"
         echo 1 > "$path/remove"
         logger -t "$LOG_TAG" "action=powerdown stage=pci-remove device=0000:$dev"
     fi

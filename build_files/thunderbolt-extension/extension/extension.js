@@ -98,6 +98,10 @@ class ThunderboltIndicator extends PanelMenu.Button {
             this._statusItem.label.text = 'Thunderbolt is ready';
             this._powerItem.label.text = 'Connect an adapter to use it';
             this.accessible_name = 'Thunderbolt ready for an adapter';
+        } else if (state === 'powering-down') {
+            this._statusItem.label.text = 'Thunderbolt is powering down';
+            this._powerItem.label.text = 'Maximum power saving is being restored';
+            this.accessible_name = 'Thunderbolt powering down';
         } else if (state === 'powerdown-incomplete') {
             this._statusItem.label.text = 'Thunderbolt power-down is incomplete';
             this._powerItem.label.text = 'Maximum power saving is not active';
@@ -145,7 +149,7 @@ class ThunderboltIndicator extends PanelMenu.Button {
             if (this._destroyed)
                 return;
 
-            if (successful && ['enabled', 'disabled', 'ready', 'powerdown-incomplete'].includes(stdout))
+            if (successful && ['enabled', 'disabled', 'ready', 'powering-down', 'powerdown-incomplete'].includes(stdout))
                 this._setState(stdout);
             else if (!successful && stderr)
                 console.error(`Thunderbolt status failed: ${stderr}`);

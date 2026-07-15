@@ -6,6 +6,7 @@ readonly STATE_DIR="/run/silverletter"
 readonly STATE_FILE="${STATE_DIR}/thunderbolt-enabled"
 readonly STATE_EVENT_FILE="${STATE_DIR}/thunderbolt-state-changed"
 readonly DISCONNECT_REQUEST_FILE="${STATE_DIR}/thunderbolt-disconnect-request"
+readonly POWERING_DOWN_FILE="${STATE_DIR}/thunderbolt-powering-down"
 readonly SUSPEND_FILE="${STATE_DIR}/thunderbolt-suspending"
 readonly LEGACY_RESTART_FILE="${STATE_DIR}/thunderbolt-restart-required"
 readonly CONTROL_LOCK="${STATE_DIR}/thunderbolt-control.lock"
@@ -125,6 +126,8 @@ show_status() {
         printf 'enabled\n'
     elif [[ -e "$STATE_FILE" ]]; then
         printf 'ready\n'
+    elif [[ -e "$POWERING_DOWN_FILE" ]]; then
+        printf 'powering-down\n'
     elif falcon_ridge_present; then
         printf 'powerdown-incomplete\n'
     else
@@ -158,7 +161,7 @@ claim_hotplug() {
         return 0
     fi
 
-    rm -f "$LEGACY_RESTART_FILE"
+    rm -f "$LEGACY_RESTART_FILE" "$POWERING_DOWN_FILE"
     if [[ ! -e "$STATE_FILE" ]]; then
         : > "$STATE_FILE"
         chmod 0644 "$STATE_FILE"
@@ -195,9 +198,13 @@ release_hotplug() {
     fi
 
     if [[ ! -e "$STATE_FILE" ]]; then
-        log_event daemon.info "action=disconnect result=skipped reason=not-claimed"
-        notify_state_change
-        return 0
+        if falcon_ridge_present; then
+            log_event daemon.warning "action=disconnect stage=retry-incomplete-powerdown"
+        else
+            log_event daemon.info "action=disconnect result=skipped reason=already-powered-down"
+            notify_state_change
+            return 0
+        fi
     fi
 
     if thunderbolt_storage_present; then
@@ -209,6 +216,9 @@ release_hotplug() {
     # Dropping the claim before invoking the existing helper makes teardown
     # interruptible: a rapid reconnect recreates the marker and the helper
     # cancels at one of its guarded checkpoints.
+    : > "$POWERING_DOWN_FILE"
+    chmod 0644 "$POWERING_DOWN_FILE"
+    trap 'rm -f "$POWERING_DOWN_FILE"; notify_state_change' EXIT
     rm -f "$STATE_FILE" "$LEGACY_RESTART_FILE"
     notify_state_change
     log_event daemon.notice "action=disconnect stage=claim-released"
