@@ -93,11 +93,11 @@ Note: GitHub requires you to be signed in to download workflow artifacts.
 
 ## Updating
 
-The x86 `latest` image is rebuilt from `main` after pushes and **twice weekly**, every Wednesday and Sunday. 
+The `latest` image is rebuilt after pushes and **twice weekly**, every Wednesday and Sunday. 
 
 `uupd` checks for and stages operating-system and Flatpak updates automatically. The panel indicator shows update activity and tells you when a reboot is needed to enter the staged deployment. GNOME Software updates are disabled because `uupd` handles them.
 
-## Check the x86 power tuning
+## Check the power tuning
 
 The image includes a diagnostic script that checks the power configuration and reports tunables that are active, missing, or unexpected:
 
