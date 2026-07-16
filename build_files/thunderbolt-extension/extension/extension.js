@@ -59,23 +59,30 @@ class ThunderboltIndicator extends PanelMenu.Button {
                 this._refresh();
         });
 
-        this._setState(false);
+        this._setState('disabled');
         this._refresh();
     }
 
-    _setState(enabled) {
+    _setState(state) {
+        const enabled = state === 'armed' || state === 'active';
+
         this._enabled = enabled;
         this._icon.set_style(`color: ${enabled ? ENABLED_COLOR : DISABLED_COLOR};`);
-        this._statusItem.label.text = enabled
-            ? 'Thunderbolt is enabled until the next reboot'
-            : 'Thunderbolt is powered down to save power';
         this._actionItem.visible = !enabled;
-        this._instructionItem.label.text = enabled
-            ? 'Connect your Thunderbolt adapter now'
-            : 'Enable only when you need the port';
-        this.accessible_name = enabled
-            ? 'Thunderbolt enabled'
-            : 'Thunderbolt powered down';
+
+        if (state === 'active') {
+            this._statusItem.label.text = 'Thunderbolt is active until the next reboot';
+            this._instructionItem.label.text = 'Thunderbolt controller detected';
+            this.accessible_name = 'Thunderbolt active';
+        } else if (state === 'armed') {
+            this._statusItem.label.text = 'Thunderbolt is ready until the next reboot';
+            this._instructionItem.label.text = 'Disconnect and reconnect your Thunderbolt adapter';
+            this.accessible_name = 'Thunderbolt ready';
+        } else {
+            this._statusItem.label.text = 'Thunderbolt is powered down to save power';
+            this._instructionItem.label.text = 'Enable only when you need the port';
+            this.accessible_name = 'Thunderbolt powered down';
+        }
     }
 
     _setBusy(busy) {
@@ -114,8 +121,12 @@ class ThunderboltIndicator extends PanelMenu.Button {
         this._spawn([CONTROL, 'status'], (successful, stdout, stderr) => {
             if (this._destroyed)
                 return;
-            if (successful)
-                this._setState(stdout === 'enabled');
+            if (successful) {
+                const state = stdout === 'active' || stdout === 'armed'
+                    ? stdout
+                    : 'disabled';
+                this._setState(state);
+            }
             else if (stderr)
                 console.error(`Thunderbolt status failed: ${stderr}`);
         });
@@ -130,16 +141,23 @@ class ThunderboltIndicator extends PanelMenu.Button {
             'Connected devices may cause system instability. Reboot to restore the default powered-down state.'
         );
         this._setBusy(true);
-        this._spawn(['pkexec', CONTROL, 'enable'], (successful, _stdout, stderr) => {
+        this._spawn(['pkexec', CONTROL, 'enable'], (successful, stdout, stderr) => {
             if (this._destroyed)
                 return;
 
             this._setBusy(false);
             if (successful) {
-                Main.notify(
-                    'Thunderbolt enabled until next reboot',
-                    'Connect your Thunderbolt adapter now.'
-                );
+                if (stdout === 'armed') {
+                    Main.notify(
+                        'Thunderbolt is ready until next reboot',
+                        'Disconnect and reconnect your Thunderbolt adapter.'
+                    );
+                } else {
+                    Main.notify(
+                        'Thunderbolt enabled until next reboot',
+                        'Connect your Thunderbolt adapter now.'
+                    );
+                }
             } else {
                 Main.notifyError(
                     'Thunderbolt could not be enabled',

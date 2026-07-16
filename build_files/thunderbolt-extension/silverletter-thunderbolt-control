@@ -28,9 +28,19 @@ nhi_present() {
     [[ -e /sys/bus/pci/devices/0000:07:00.0 ]]
 }
 
+session_enabled() {
+    [[ -f "$ENABLE_RULE" &&
+       -L "$POWERDOWN_MASK" &&
+       "$(readlink "$POWERDOWN_MASK")" == "/dev/null" ]]
+}
+
 show_status() {
-    if nhi_present; then
-        printf 'enabled\n'
+    if session_enabled; then
+        if nhi_present; then
+            printf 'active\n'
+        else
+            printf 'armed\n'
+        fi
     else
         printf 'disabled\n'
     fi
@@ -128,8 +138,16 @@ enable_thunderbolt() {
     done
 
     if ! nhi_present; then
-        printf 'The Thunderbolt controller did not appear after the PCI rescan.\n' >&2
-        return 1
+        # Falcon Ridge may not wake from its removed low-power state until it
+        # sees a new physical hot-plug edge. Keep this boot-scoped session
+        # armed and let a disconnect/reconnect perform the safe hardware wake.
+        flock -u 8
+        powerdown_lock_acquired=0
+        trap - ERR
+        log_event daemon.notice \
+            "action=enable result=success state=armed controller=absent reconnect_required=yes lifetime=until-reboot"
+        printf 'armed\n'
+        return 0
     fi
 
     set_present_bridges_on
@@ -137,7 +155,8 @@ enable_thunderbolt() {
     powerdown_lock_acquired=0
     trap - ERR
     log_event daemon.notice \
-        "action=enable result=success controller=0000:07:00.0 lifetime=until-reboot"
+        "action=enable result=success state=active controller=0000:07:00.0 lifetime=until-reboot"
+    printf 'active\n'
 }
 
 case "${1:-}" in

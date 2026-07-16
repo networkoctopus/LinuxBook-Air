@@ -129,11 +129,31 @@ done
 header "Thunderbolt"
 
 TB_ENABLED=0
-if [[ -e /sys/bus/pci/devices/0000:07:00.0 ]]; then
+TB_ACTIVE=0
+if [[ -f /run/udev/rules.d/98-silverletter-thunderbolt-enabled.rules &&
+      -L /run/udev/rules.d/99-thunderbolt-pm.rules &&
+      "$(readlink /run/udev/rules.d/99-thunderbolt-pm.rules)" == "/dev/null" ]]; then
     TB_ENABLED=1
-    warn "Experimental Thunderbolt session is active until reboot"
+    if [[ -e /sys/bus/pci/devices/0000:07:00.0 ]]; then
+        TB_ACTIVE=1
+        warn "Experimental Thunderbolt session is active until reboot"
+    else
+        warn "Experimental Thunderbolt session is armed; reconnect the adapter"
+    fi
+elif [[ -e /sys/bus/pci/devices/0000:07:00.0 ]]; then
+    fail "07:00.0 is present without a manual Thunderbolt session"
 else
     pass "Thunderbolt is in the default powered-down state"
+fi
+
+if [[ -L /etc/udev/rules.d/99-thunderbolt-pm.rules &&
+      "$(readlink /etc/udev/rules.d/99-thunderbolt-pm.rules)" == "/dev/null" ]]; then
+    fail "Persistent /etc udev mask disables Thunderbolt power-down"
+elif [[ -e /etc/udev/rules.d/99-thunderbolt-pm.rules ||
+        -L /etc/udev/rules.d/99-thunderbolt-pm.rules ]]; then
+    warn "/etc/udev/rules.d/99-thunderbolt-pm.rules overrides the image rule"
+else
+    pass "No persistent /etc override masks the Thunderbolt power-down rule"
 fi
 
 if lsmod | grep -q '^thunderbolt '; then
@@ -144,7 +164,7 @@ if lsmod | grep -q '^thunderbolt '; then
     fi
 else
     if [[ $TB_ENABLED -eq 1 ]]; then
-        fail "07:00.0 is present but the thunderbolt module is not loaded"
+        fail "Temporary Thunderbolt session is enabled but the module is not loaded"
     else
         pass "thunderbolt module not loaded"
     fi
@@ -186,7 +206,11 @@ for dev in "${TB_DEVS[@]}"; do
         fi
     else
         if [[ $TB_ENABLED -eq 1 ]]; then
-            warn "$dev — not enumerated during the temporary session"
+            if [[ $TB_ACTIVE -eq 1 ]]; then
+                warn "$dev — not enumerated during the active temporary session"
+            else
+                info "$dev — not enumerated while the session is armed"
+            fi
         else
             pass "$dev — not present on PCIe bus"
         fi

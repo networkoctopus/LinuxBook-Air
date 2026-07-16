@@ -24,7 +24,7 @@ At 50% display brightness with Wi-Fi enabled and no apps open, my machine draws 
 - [mbpfan](https://github.com/linux-on-mac/mbpfan) for MacBook fan control
 - [uupd](https://github.com/ublue-os/uupd) automatic image and Flatpak updates
 - GNOME extensions installed and enabled system-wide: [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/), [Xremap](https://extensions.gnome.org/extension/5060/xremap/), [Vitals](https://extensions.gnome.org/extension/1460/vitals/), [User Themes](https://extensions.gnome.org/extension/19/user-themes/), [Dash to Dock](https://extensions.gnome.org/extension/307/dash-to-dock/), and the [uupd Indicator](https://github.com/Vyachean/uupd-indicator) with restart-required notifications
-- A top-bar Thunderbolt status indicator for the automatic power-saving and hotplug support
+- A top-bar indicator that can manually arm experimental Thunderbolt support until the next reboot
 - [WhiteSur GTK, Shell, and GDM styling](https://github.com/vinceliuice/WhiteSur-gtk-theme), selectable [WhiteSur icons](https://github.com/vinceliuice/WhiteSur-icon-theme), [WhiteSur cursors](https://github.com/vinceliuice/WhiteSur-cursors), and [MacTahoe icons and cursors](https://github.com/vinceliuice/MacTahoe-icon-theme), optional [MacTahoe Firefox CSS](https://github.com/vinceliuice/MacTahoe-gtk-theme), and MacTahoe day/night wallpapers that follow dark mode, with the day image also used by GDM
 
 ## Hardware compatibility
