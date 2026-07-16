@@ -15,17 +15,13 @@ install -Dm644 /ctx/thunderbolt-extension/silverletter-thunderbolt-sleep.service
     /usr/lib/systemd/system/silverletter-thunderbolt-sleep.service
 install -Dm644 /ctx/thunderbolt-extension/silverletter-thunderbolt-hotplug.service \
     /usr/lib/systemd/system/silverletter-thunderbolt-hotplug.service
-install -Dm644 /ctx/thunderbolt-extension/silverletter-thunderbolt-disconnect.service \
-    /usr/lib/systemd/system/silverletter-thunderbolt-disconnect.service
-install -Dm644 /ctx/thunderbolt-extension/silverletter-thunderbolt-disconnect.path \
-    /usr/lib/systemd/system/silverletter-thunderbolt-disconnect.path
 install -Dm644 /ctx/thunderbolt-extension/silverletter-thunderbolt.conf \
     /usr/lib/tmpfiles.d/silverletter-thunderbolt.conf
 # Recreate the enablement links because this unit intentionally changed from
 # RequiredBy= to WantedBy=. A plain enable can leave the old .requires link in
 # an incrementally built image.
 systemctl reenable silverletter-thunderbolt-sleep.service
-systemctl enable silverletter-thunderbolt-disconnect.path
+systemctl disable silverletter-thunderbolt-disconnect.path 2>/dev/null || true
 
 ### ── GNOME Shell indicator ──
 THUNDERBOLT_UUID="thunderbolt@silverletter.local"

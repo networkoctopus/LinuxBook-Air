@@ -25,7 +25,7 @@ install -Dm644 /ctx/power/silverletter-thunderbolt-powerdown.service \
 systemctl enable silverletter-thunderbolt-powerdown.service
 
 # These are supplied by the Fedora base image. Fail the image build if a future
-# base change removes a dependency used by the always-disabled power-down path.
+# base change removes a dependency used by Thunderbolt power control.
 for runtime_cmd in flock logger lsmod modprobe udevadm; do
     command -v "$runtime_cmd" >/dev/null
 done

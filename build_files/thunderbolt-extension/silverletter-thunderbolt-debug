@@ -412,10 +412,8 @@ disconnect_step() {
     prompt_action "$label" 'Disconnect the Thunderbolt adapter now. Do not reconnect until instructed.'
     wait_for_external_absent 45 "$label" || stop_test "${label}-external-still-present"
     snapshot "${label}-external-gone"
-    if ! wait_for_powered_down "$DISCONNECT_TIMEOUT" "$label"; then
-        stop_test "${label}-powerdown-timeout"
-    fi
-    snapshot "${label}-powered-down"
+    event "disconnect stage=$label result=success session=retained teardown=deferred-until-suspend-or-reboot"
+    snapshot "${label}-session-retained"
 }
 
 suspend_test_ready() {
