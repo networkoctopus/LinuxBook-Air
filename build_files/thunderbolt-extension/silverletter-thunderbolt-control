@@ -84,11 +84,11 @@ is_falcon_ridge_device() {
     [[ "$vendor" == "0x8086" && ( "$device" == "0x156a" || "$device" == "0x156b" ) ]]
 }
 
-falcon_ridge_present() {
+bridge_fabric_present() {
     local path
 
     for path in /sys/bus/pci/devices/*; do
-        if is_falcon_ridge_device "$path"; then
+        if is_falcon_ridge_device "$path" && [[ $(<"${path}/device") == "0x156b" ]]; then
             return 0
         fi
     done
@@ -138,16 +138,16 @@ thunderbolt_pci_addresses() {
 
 log_snapshot() {
     local stage="$1" marker="absent" established="absent" module="unloaded"
-    local nhi="absent" external="absent" hierarchy="absent"
+    local nhi="absent" external="absent" bridge_fabric="absent"
 
     [[ -e "$STATE_FILE" ]] && marker="present"
     [[ -e "$ESTABLISHED_FILE" ]] && established="present"
     lsmod | grep -q '^thunderbolt ' && module="loaded"
     nhi_present && nhi="present"
     external_device_present && external="present"
-    falcon_ridge_present && hierarchy="present"
+    bridge_fabric_present && bridge_fabric="present"
     log_event daemon.info \
-        "stage=$stage marker=$marker established=$established module=$module nhi=$nhi external=$external hierarchy=$hierarchy pci_devices=$(thunderbolt_pci_addresses)"
+        "stage=$stage marker=$marker established=$established module=$module nhi=$nhi external=$external bridge_fabric=$bridge_fabric pci_devices=$(thunderbolt_pci_addresses)"
 }
 
 thunderbolt_storage_present() {
@@ -174,7 +174,7 @@ show_status() {
         printf 'powering-down\n'
     elif [[ -e "$REPLUG_DURING_POWERDOWN_FILE" ]]; then
         printf 'powerdown-incomplete\n'
-    elif falcon_ridge_present; then
+    elif nhi_present; then
         printf 'powerdown-incomplete\n'
     else
         printf 'disabled\n'
@@ -204,7 +204,7 @@ set_thunderbolt_tree_power_on() {
 
 # This deliberately does almost no work: it runs directly from udev so the
 # marker reaches an already-running power-down job before that job removes the
-# bridge. Slow work is delegated to the systemd hotplug service.
+# NHI. Slow work is delegated to the systemd hotplug service.
 claim_hotplug() {
     require_root
     install -d -m 0755 "$STATE_DIR"
@@ -226,9 +226,8 @@ claim_hotplug() {
             "action=hotplug-claim result=success stage=powerdown-preparation-cancelled"
     fi
 
-    # Re-enumerating below a bridge while the kernel is synchronously removing
-    # that bridge can stall PCI config-space readers and has caused a kernel
-    # panic on this hardware. Require teardown to finish and then replug.
+    # Do not start activation during the final NHI-removal phase. Serializing
+    # this transition avoids PCI enumeration racing a power-state change.
     if [[ -e "$POWERING_DOWN_FILE" ]]; then
         : > "$REPLUG_DURING_POWERDOWN_FILE"
         chmod 0644 "$REPLUG_DURING_POWERDOWN_FILE"
@@ -336,7 +335,7 @@ release_hotplug() {
     fi
 
     if [[ ! -e "$STATE_FILE" ]]; then
-        if falcon_ridge_present; then
+        if nhi_present; then
             log_event daemon.warning "action=disconnect stage=retry-incomplete-powerdown"
         else
             log_event daemon.info "action=disconnect result=skipped reason=already-powered-down"
@@ -382,7 +381,7 @@ release_hotplug() {
 
     # Phase two starts immediately before the claim is released. From here a
     # replug is unsafe and is recorded separately so activation cannot race
-    # the hierarchy being dismantled.
+    # NHI removal.
     : > "$POWERING_DOWN_FILE"
     chmod 0644 "$POWERING_DOWN_FILE"
     rm -f "$PREPARING_POWERDOWN_FILE"
@@ -404,8 +403,8 @@ release_hotplug() {
         return 1
     fi
 
-    if falcon_ridge_present; then
-        log_event daemon.err "action=disconnect result=failed reason=pci-hierarchy-still-present"
+    if nhi_present; then
+        log_event daemon.err "action=disconnect result=failed reason=nhi-still-present"
         log_snapshot "disconnect-incomplete"
         notify_state_change
         return 1
@@ -559,8 +558,8 @@ power_down_thunderbolt() {
         return 1
     fi
 
-    if falcon_ridge_present; then
-        log_event daemon.err "action=powerdown-request reason=$reason result=failed reason_detail=pci-hierarchy-still-present"
+    if nhi_present; then
+        log_event daemon.err "action=powerdown-request reason=$reason result=failed reason_detail=nhi-still-present"
         log_snapshot "powerdown-request-incomplete"
         return 1
     fi
@@ -579,9 +578,9 @@ power_down_thunderbolt() {
         if modprobe -r thunderbolt; then
             log_event daemon.info "action=powerdown-request stage=module-removed module=thunderbolt"
         else
-            # The PCI hierarchy is already gone, so a module unload failure
-            # must be visible but must not turn a successful hardware teardown
-            # into a failed suspend.
+            # The NHI is already gone, so a module unload failure must be
+            # visible but must not turn a successful hardware teardown into a
+            # failed suspend.
             log_event daemon.warning "action=powerdown-request stage=module-remove-failed module=thunderbolt"
         fi
     fi
@@ -597,7 +596,7 @@ prepare_suspend() {
     notify_state_change
     log_event daemon.notice "action=prepare-suspend stage=start"
 
-    if [[ -e "$STATE_FILE" ]] || lsmod | grep -q '^thunderbolt ' || falcon_ridge_present; then
+    if [[ -e "$STATE_FILE" ]] || lsmod | grep -q '^thunderbolt ' || nhi_present; then
         if ! power_down_thunderbolt suspend; then
             rm -f "$SUSPEND_FILE"
             notify_state_change

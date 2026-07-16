@@ -1,5 +1,5 @@
 [Unit]
-Description=Fully power down Thunderbolt before system sleep
+Description=Quiesce the Thunderbolt NHI before system sleep
 Before=sleep.target
 PartOf=sleep.target
 StopWhenUnneeded=yes

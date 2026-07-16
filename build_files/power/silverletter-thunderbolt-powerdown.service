@@ -1,5 +1,5 @@
 [Unit]
-Description=Power down the MacBook Air Thunderbolt PCI hierarchy
+Description=Power down the MacBook Air Thunderbolt NHI
 After=systemd-udev-trigger.service
 
 [Service]

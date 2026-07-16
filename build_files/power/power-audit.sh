@@ -169,32 +169,47 @@ else
     fail "thunderbolt-blacklist.conf missing or empty"
 fi
 
-# Thunderbolt PCIe devices runtime PM
+# The stable idle design retains the Falcon Ridge bridges in D0 and removes
+# only the 07:00 NHI. Runtime PM can strand these bridges in D3cold.
 header "Thunderbolt PCIe Runtime PM"
-TB_DEVS=(
+TB_BRIDGES=(
     "0000:05:00.0"
     "0000:06:00.0"
     "0000:06:03.0"
     "0000:06:04.0"
     "0000:06:05.0"
     "0000:06:06.0"
-    "0000:07:00.0"
 )
-for dev in "${TB_DEVS[@]}"; do
+for dev in "${TB_BRIDGES[@]}"; do
     if [[ -e "/sys/bus/pci/devices/$dev" ]]; then
         ctrl=$(cat /sys/bus/pci/devices/$dev/power/control 2>/dev/null)
         status=$(cat /sys/bus/pci/devices/$dev/power/runtime_status 2>/dev/null)
-        if [[ $TB_ENABLED -eq 0 ]]; then
-            fail "$dev — still present (expected the Thunderbolt hierarchy to be removed)"
-        elif [[ "$ctrl" == "on" ]]; then
-            pass "$dev — control=$ctrl status=$status (hotplug session active)"
+        if [[ "$ctrl" == "on" ]]; then
+            pass "$dev — retained bridge control=$ctrl status=$status"
         else
-            fail "$dev — control=$ctrl (expected on during hotplug session) status=$status"
+            fail "$dev — retained bridge control=$ctrl (expected on to avoid D3cold) status=$status"
         fi
     else
-        info "$dev — not present on PCIe bus (expected if TB fully off)"
+        warn "$dev — retained Falcon Ridge bridge is not present"
     fi
 done
+
+TB_NHI="0000:07:00.0"
+if [[ -e "/sys/bus/pci/devices/$TB_NHI" ]]; then
+    ctrl=$(cat /sys/bus/pci/devices/$TB_NHI/power/control 2>/dev/null)
+    status=$(cat /sys/bus/pci/devices/$TB_NHI/power/runtime_status 2>/dev/null)
+    if [[ $TB_ENABLED -eq 1 && "$ctrl" == "on" ]]; then
+        pass "$TB_NHI — control=$ctrl status=$status (hotplug session active)"
+    elif [[ $TB_ENABLED -eq 1 ]]; then
+        fail "$TB_NHI — control=$ctrl (expected on during hotplug session) status=$status"
+    else
+        fail "$TB_NHI — still present without a hotplug session"
+    fi
+elif [[ $TB_ENABLED -eq 1 ]]; then
+    fail "$TB_NHI — missing while hotplug session is active"
+else
+    pass "$TB_NHI — NHI absent; retained bridge fabric remains available for hotplug"
+fi
 
 # ─── 4. WIFI POWERSAVE ─────────────────────────────────────────────────────
 header "WiFi Powersave"
@@ -297,6 +312,14 @@ fi
 # ─── 7. PCIe RUNTIME PM ────────────────────────────────────────────────────
 header "PCIe Runtime PM Summary"
 
+is_retained_thunderbolt_bridge() {
+    local dev="$1" vendor device
+
+    vendor=$(cat "$dev/vendor" 2>/dev/null)
+    device=$(cat "$dev/device" 2>/dev/null)
+    [[ "$vendor" == "0x8086" && "$device" == "0x156b" ]]
+}
+
 total=0; auto=0; intentional_on=0; suspended=0; active_count=0
 while IFS= read -r dev; do
     addr=$(basename "$dev")
@@ -304,8 +327,11 @@ while IFS= read -r dev; do
     status=$(cat "$dev/power/runtime_status" 2>/dev/null)
     total=$((total+1))
     [[ "$ctrl" == "auto" ]] && auto=$((auto+1))
-    if [[ $TB_ENABLED -eq 1 && "$ctrl" == "on" && "$(readlink -f "$dev")" == *"/0000:05:00.0"* ]]; then
-        intentional_on=$((intentional_on+1))
+    if [[ "$ctrl" == "on" ]]; then
+        if is_retained_thunderbolt_bridge "$dev" ||
+            [[ $TB_ENABLED -eq 1 && "$(readlink -f "$dev")" == *"/0000:05:00.0"* ]]; then
+            intentional_on=$((intentional_on+1))
+        fi
     fi
     [[ "$status" == "suspended" ]] && suspended=$((suspended+1))
     [[ "$status" == "active" ]] && active_count=$((active_count+1))
@@ -313,7 +339,7 @@ done < <(find /sys/bus/pci/devices -maxdepth 1 -mindepth 1)
 
 info "Total PCIe devices: $total"
 info "Runtime PM auto:    $auto / $total"
-[[ $intentional_on -gt 0 ]] && info "Thunderbolt forced on: $intentional_on (hotplug session)"
+[[ $intentional_on -gt 0 ]] && info "Thunderbolt intentionally kept on: $intentional_on"
 info "Currently suspended: $suspended"
 info "Currently active:    $active_count"
 
@@ -333,8 +359,10 @@ for dev in /sys/bus/pci/devices/*; do
     ctrl=$(cat "$dev/power/control" 2>/dev/null)
     if [[ "$ctrl" != "auto" ]]; then
         name=$(lspci -s "$addr" 2>/dev/null | cut -d' ' -f3-)
-        if [[ $TB_ENABLED -eq 1 && "$ctrl" == "on" && "$(readlink -f "$dev")" == *"/0000:05:00.0"* ]]; then
-            info "  $addr — control=$ctrl — $name (temporary Thunderbolt enable)"
+        if [[ "$ctrl" == "on" ]] &&
+            { is_retained_thunderbolt_bridge "$dev" ||
+              [[ $TB_ENABLED -eq 1 && "$(readlink -f "$dev")" == *"/0000:05:00.0"* ]]; }; then
+            info "  $addr — control=$ctrl — $name (intentional Thunderbolt state)"
         else
             fail "  $addr — control=$ctrl — $name"
         fi

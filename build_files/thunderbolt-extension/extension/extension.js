@@ -63,8 +63,8 @@ class ThunderboltIndicator extends PanelMenu.Button {
             this._stateMonitorId = 0;
         }
 
-        // The pre-sleep service always powers the hierarchy down. Refresh on
-        // resume as a fallback even if no filesystem event reaches the shell.
+        // The pre-sleep service quiesces the NHI. Refresh on resume as a
+        // fallback even if no filesystem event reaches the shell.
         this._sleepSignalId = Gio.DBus.system.signal_subscribe(
             'org.freedesktop.login1',
             'org.freedesktop.login1.Manager',

@@ -34,64 +34,81 @@ if [ -e "$STATEFILE" ] || [ -e "$REPLUGFILE" ]; then
     exit 0
 fi
 
-TB_DEVS="07:00.0 06:06.0 06:05.0 06:04.0 06:03.0 06:00.0 05:00.0"
+# Keep the Falcon Ridge bridge fabric enumerated. Removing the upstream
+# 05:00/06:xx bridges has caused PCI config-space stalls and kernel panics on
+# this hardware, while the meaningful idle-power saving comes from quiescing
+# and removing the 07:00 NHI.
+TB_NHI="07:00.0"
+TB_BRIDGES="06:06.0 06:05.0 06:04.0 06:03.0 06:00.0 05:00.0"
 
-for dev in $TB_DEVS; do
-    if [ -e "$STATEFILE" ] || [ -e "$REPLUGFILE" ]; then
-        logger -t "$LOG_TAG" "action=powerdown result=cancelled reason=claim-or-replug-during-runtime-pm"
-        exit 0
-    fi
+# Keep the bridge fabric in D0 throughout NHI teardown. Allowing these bridges
+# to enter D3cold leaves them registered but inaccessible on this hardware,
+# preventing reliable hotplug and producing repeated PCI power-state errors.
+bridge_ready=1
+for dev in $TB_BRIDGES; do
     path="/sys/bus/pci/devices/0000:$dev"
-    if [ -e "$path" ]; then
-        runtime_pm_ok=1
-        if ! echo 0 > "$path/power/autosuspend_delay_ms"; then
-            runtime_pm_ok=0
+    if [ -e "$path/power/control" ]; then
+        if echo on > "$path/power/control"; then
+            logger -t "$LOG_TAG" \
+                "action=powerdown stage=bridge-retained device=0000:$dev control=on"
+        else
+            bridge_ready=0
             logger -p daemon.warning -t "$LOG_TAG" \
-                "action=powerdown stage=runtime-pm-warning device=0000:$dev attribute=autosuspend_delay_ms"
-        fi
-        if ! echo auto > "$path/power/control"; then
-            runtime_pm_ok=0
-            logger -p daemon.warning -t "$LOG_TAG" \
-                "action=powerdown stage=runtime-pm-warning device=0000:$dev attribute=control"
-        fi
-        if [ "$runtime_pm_ok" -eq 1 ]; then
-            logger -t "$LOG_TAG" "action=powerdown stage=runtime-pm device=0000:$dev control=auto"
+                "action=powerdown stage=bridge-retain-warning device=0000:$dev attribute=control"
         fi
     fi
 done
+if [ "$bridge_ready" -ne 1 ]; then
+    logger -p daemon.err -t "$LOG_TAG" \
+        "action=powerdown result=failed reason=bridge-fabric-not-accessible"
+    exit 1
+fi
+
+if [ -e "$STATEFILE" ] || [ -e "$REPLUGFILE" ]; then
+    logger -t "$LOG_TAG" "action=powerdown result=cancelled reason=claim-or-replug-during-runtime-pm"
+    exit 0
+fi
+nhi_path="/sys/bus/pci/devices/0000:$TB_NHI"
+if [ -e "$nhi_path" ]; then
+    runtime_pm_ok=1
+    if ! echo 0 > "$nhi_path/power/autosuspend_delay_ms"; then
+        runtime_pm_ok=0
+        logger -p daemon.warning -t "$LOG_TAG" \
+            "action=powerdown stage=runtime-pm-warning device=0000:$TB_NHI attribute=autosuspend_delay_ms"
+    fi
+    if ! echo auto > "$nhi_path/power/control"; then
+        runtime_pm_ok=0
+        logger -p daemon.warning -t "$LOG_TAG" \
+            "action=powerdown stage=runtime-pm-warning device=0000:$TB_NHI attribute=control"
+    fi
+    if [ "$runtime_pm_ok" -eq 1 ]; then
+        logger -t "$LOG_TAG" \
+            "action=powerdown stage=runtime-pm device=0000:$TB_NHI control=auto"
+    fi
+fi
 
 sleep "$TB_RUNTIME_PM_SETTLE_SECONDS"
 
-# Do not tear the hierarchy down if it was enabled while runtime PM settled.
+# Do not remove the NHI if it was enabled while runtime PM settled.
 if [ -e "$STATEFILE" ] || [ -e "$REPLUGFILE" ]; then
     logger -t "$LOG_TAG" "action=powerdown result=cancelled reason=claim-or-replug-during-runtime-pm-delay"
     exit 0
 fi
 
-for dev in $TB_DEVS; do
-    if [ -e "$STATEFILE" ] || [ -e "$REPLUGFILE" ]; then
-        logger -t "$LOG_TAG" "action=powerdown result=cancelled reason=claim-or-replug-before-pci-remove"
-        exit 0
-    fi
-    path="/sys/bus/pci/devices/0000:$dev"
-    if [ -e "$path/remove" ]; then
-        logger -t "$LOG_TAG" "action=powerdown stage=pci-remove-start device=0000:$dev"
-        echo 1 > "$path/remove"
-        logger -t "$LOG_TAG" "action=powerdown stage=pci-remove device=0000:$dev"
-    fi
-done
+if [ -e "$STATEFILE" ] || [ -e "$REPLUGFILE" ]; then
+    logger -t "$LOG_TAG" "action=powerdown result=cancelled reason=claim-or-replug-before-pci-remove"
+    exit 0
+fi
+if [ -e "$nhi_path/remove" ]; then
+    logger -t "$LOG_TAG" "action=powerdown stage=pci-remove-start device=0000:$TB_NHI"
+    echo 1 > "$nhi_path/remove"
+    logger -t "$LOG_TAG" "action=powerdown stage=pci-remove device=0000:$TB_NHI"
+fi
 
-remaining=""
-for dev in $TB_DEVS; do
-    if [ -e "/sys/bus/pci/devices/0000:$dev" ]; then
-        remaining="${remaining}${remaining:+,}0000:$dev"
-    fi
-done
-
-if [ -n "$remaining" ]; then
+if [ -e "$nhi_path" ]; then
     logger -p daemon.err -t "$LOG_TAG" \
-        "action=powerdown result=failed remaining_devices=$remaining"
+        "action=powerdown result=failed remaining_devices=0000:$TB_NHI"
     exit 1
 fi
 
-logger -t "$LOG_TAG" "action=powerdown result=success remaining_devices=none"
+logger -t "$LOG_TAG" "action=powerdown result=success nhi=absent bridge_fabric=retained"
