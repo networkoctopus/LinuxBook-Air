@@ -2,6 +2,8 @@
 
 LOCKFILE=/run/tb-powerdown.lock
 LOG_TAG=silverletter-thunderbolt
+STATE_DIR=/run/silverletter
+STATE_FILE="$STATE_DIR/thunderbolt.state"
 
 exec 9> "$LOCKFILE"
 if ! flock -n 9; then
@@ -33,5 +35,14 @@ for dev in $TB_DEVS; do
         logger -t "$LOG_TAG" "action=powerdown stage=pci-remove device=0000:$dev"
     fi
 done
+
+if ! {
+    install -d -m 0755 "$STATE_DIR" &&
+    printf 'disabled\n' > "$STATE_FILE" &&
+    chmod 0644 "$STATE_FILE"
+}; then
+    logger -t "$LOG_TAG" \
+        "action=state-notify result=failed requested_state=disabled"
+fi
 
 logger -t "$LOG_TAG" "action=powerdown result=success"

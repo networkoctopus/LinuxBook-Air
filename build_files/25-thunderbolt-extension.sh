@@ -10,6 +10,10 @@ install -Dm755 /ctx/thunderbolt-extension/silverletter-thunderbolt-control \
     /usr/libexec/silverletter-thunderbolt-control
 
 install -Dm644 \
+    /ctx/thunderbolt-extension/silverletter-thunderbolt-state.conf \
+    /usr/lib/tmpfiles.d/silverletter-thunderbolt-state.conf
+
+install -Dm644 \
     /ctx/thunderbolt-extension/silverletter-thunderbolt-teardown.service \
     /usr/lib/systemd/system/silverletter-thunderbolt-teardown.service
 
@@ -17,9 +21,9 @@ install -Dm644 \
     /ctx/thunderbolt-extension/io.github.networkoctopus.silverletter.thunderbolt.policy \
     /usr/share/polkit-1/actions/io.github.networkoctopus.silverletter.thunderbolt.policy
 
-# Do not carry any event-driven, disconnect, debug, or resume machinery from
-# earlier experimental revisions. The teardown unit installed above only
-# performs a one-way, pre-suspend shutdown.
+# Do not carry any automatic hotplug activation, disconnect, debug, or resume
+# machinery from earlier experimental revisions. The teardown unit installed
+# above only quiesces hardware; normal modalias loading handles resume.
 systemctl disable \
     silverletter-thunderbolt-sleep.service \
     silverletter-thunderbolt-hotplug.service \

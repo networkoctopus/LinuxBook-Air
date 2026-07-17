@@ -1,5 +1,5 @@
 [Unit]
-Description=Gracefully power down Thunderbolt before system sleep
+Description=Gracefully quiesce Thunderbolt before system sleep
 Before=sleep.target
 
 [Service]

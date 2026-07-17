@@ -3,11 +3,15 @@
 set -euo pipefail
 
 readonly STATE_DIR="/run/silverletter"
+readonly STATE_FILE="${STATE_DIR}/thunderbolt.state"
 readonly CONTROL_LOCK="${STATE_DIR}/thunderbolt-control.lock"
 readonly POWERDOWN_LOCK="/run/tb-powerdown.lock"
 readonly POWERDOWN_HELPER="/usr/libexec/tb-powerdown.sh"
 readonly RUNTIME_RULE_DIR="/run/udev/rules.d"
 readonly POWERDOWN_MASK="${RUNTIME_RULE_DIR}/99-thunderbolt-pm.rules"
+readonly RUNTIME_MODPROBE_DIR="/run/modprobe.d"
+readonly BLACKLIST_MASK="${RUNTIME_MODPROBE_DIR}/thunderbolt-blacklist.conf"
+readonly ROOT_PORT_WAKE="/sys/bus/pci/devices/0000:00:1c.4/power/wakeup"
 readonly LOG_TAG="silverletter-thunderbolt"
 readonly -a TB_DEVICES=(
     07:00.0
@@ -23,6 +27,19 @@ log_event() {
     local priority="$1"
     shift
     logger -p "$priority" -t "$LOG_TAG" -- "$*" || true
+}
+
+notify_state() {
+    local state="$1"
+
+    if ! {
+        install -d -m 0755 "$STATE_DIR" &&
+        printf '%s\n' "$state" > "$STATE_FILE" &&
+        chmod 0644 "$STATE_FILE"
+    }; then
+        log_event daemon.warning \
+            "action=state-notify result=failed requested_state=$state"
+    fi
 }
 
 require_root() {
@@ -78,20 +95,44 @@ show_status() {
 }
 
 mask_powerdown_rule() {
-    install -d -m 0755 "$STATE_DIR" "$RUNTIME_RULE_DIR"
+    install -d -m 0755 \
+        "$STATE_DIR" \
+        "$RUNTIME_RULE_DIR" \
+        "$RUNTIME_MODPROBE_DIR"
 
-    # A same-named /dev/null link in /run overrides the image's power-down
-    # rule until manual disable, suspend teardown, or the next reboot.
+    # Same-named /dev/null links in /run override the image's power-down rule
+    # and module blacklist until manual disable or the next reboot. This lets
+    # normal PCI modalias processing reload thunderbolt after system sleep.
     ln -sfn /dev/null "$POWERDOWN_MASK"
+    ln -sfn /dev/null "$BLACKLIST_MASK"
 
     udevadm control --reload-rules
     log_event daemon.info \
-        "action=enable stage=powerdown-rule-masked lifetime=until-disable-suspend-or-reboot"
+        "action=enable stage=runtime-policy-installed lifetime=until-disable-or-reboot"
 }
 
 remove_powerdown_mask() {
-    rm -f "$POWERDOWN_MASK"
+    rm -f "$POWERDOWN_MASK" "$BLACKLIST_MASK"
     udevadm control --reload-rules || true
+}
+
+disable_root_port_wake() {
+    # 00:1c.4 exclusively owns the Thunderbolt hierarchy on this platform.
+    # Disabling its PCI wake capability is precautionary and must not make
+    # suspend fail if the firmware does not expose a writable wake attribute.
+    if [[ ! -w "$ROOT_PORT_WAKE" ]]; then
+        log_event daemon.warning \
+            "action=prepare-suspend stage=root-port-wake result=skipped path=$ROOT_PORT_WAKE"
+        return 0
+    fi
+
+    if printf 'disabled\n' > "$ROOT_PORT_WAKE"; then
+        log_event daemon.info \
+            "action=prepare-suspend stage=root-port-wake state=disabled device=0000:00:1c.4"
+    else
+        log_event daemon.warning \
+            "action=prepare-suspend stage=root-port-wake result=failed device=0000:00:1c.4"
+    fi
 }
 
 enable_thunderbolt() {
@@ -107,12 +148,13 @@ enable_thunderbolt() {
         fi
         modprobe -r thunderbolt 2>/dev/null || true
         "$POWERDOWN_HELPER" || true
+        notify_state disabled
         exit "$status"
     }
     trap rollback_enable ERR
 
     log_event daemon.notice \
-        "action=enable stage=start lifetime=until-disable-suspend-or-reboot"
+        "action=enable stage=start lifetime=until-disable-or-reboot"
     mask_powerdown_rule
 
     # Let every udev job that was queued under the image rule finish. The
@@ -152,7 +194,8 @@ enable_thunderbolt() {
         powerdown_lock_acquired=0
         trap - ERR
         log_event daemon.notice \
-            "action=enable result=success state=armed controller=absent reconnect_required=yes lifetime=until-disable-suspend-or-reboot"
+            "action=enable result=success state=armed controller=absent reconnect_required=yes lifetime=until-disable-or-reboot"
+        notify_state armed
         printf 'armed\n'
         return 0
     fi
@@ -161,25 +204,35 @@ enable_thunderbolt() {
     powerdown_lock_acquired=0
     trap - ERR
     log_event daemon.notice \
-        "action=enable result=success state=active controller=0000:07:00.0 lifetime=until-disable-suspend-or-reboot"
+        "action=enable result=success state=active controller=0000:07:00.0 lifetime=until-disable-or-reboot"
+    notify_state active
     printf 'active\n'
 }
 
 teardown_thunderbolt() {
     local action="$1"
+    local preserve_session=0
     local was_enabled=0
 
     if session_enabled; then
         was_enabled=1
     fi
 
+    if [[ "$action" == prepare-suspend ]] && (( was_enabled )); then
+        preserve_session=1
+    fi
+
     restore_session_after_failure() {
         if (( was_enabled )); then
-            install -d -m 0755 "$STATE_DIR" "$RUNTIME_RULE_DIR"
+            install -d -m 0755 \
+                "$STATE_DIR" \
+                "$RUNTIME_RULE_DIR" \
+                "$RUNTIME_MODPROBE_DIR"
             ln -sfn /dev/null "$POWERDOWN_MASK"
+            ln -sfn /dev/null "$BLACKLIST_MASK"
             udevadm control --reload-rules || true
             log_event daemon.warning \
-                "action=$action stage=powerdown-rule-remasked reason=teardown-failed"
+                "action=$action stage=runtime-policy-restored reason=teardown-failed"
         fi
     }
 
@@ -195,11 +248,23 @@ teardown_thunderbolt() {
         return 1
     fi
 
-    # Re-enable the image's normal udev power-down policy before touching the
-    # PCI hierarchy. This also makes the teardown permanent until the next
-    # explicit enable request.
-    remove_powerdown_mask
-    log_event daemon.info "action=$action stage=powerdown-rule-restored"
+    if (( preserve_session )); then
+        # Preserve the enabled session across sleep. Ensure both runtime masks
+        # are present so normal modalias handling can reload thunderbolt when
+        # Falcon Ridge naturally re-enumerates after resume.
+        install -d -m 0755 "$RUNTIME_RULE_DIR" "$RUNTIME_MODPROBE_DIR"
+        ln -sfn /dev/null "$POWERDOWN_MASK"
+        ln -sfn /dev/null "$BLACKLIST_MASK"
+        udevadm control --reload-rules
+        log_event daemon.info \
+            "action=$action stage=runtime-policy-preserved state=armed"
+    else
+        # Manual disable restores the image's default power-down rule and
+        # module blacklist before touching the PCI hierarchy.
+        remove_powerdown_mask
+        log_event daemon.info \
+            "action=$action stage=default-policy-restored"
+    fi
 
     if ! udevadm settle --timeout=30; then
         log_event daemon.err "action=$action result=failed reason=udev-timeout"
@@ -256,8 +321,15 @@ teardown_thunderbolt() {
             "action=$action stage=module-removed module=thunderbolt"
     fi
 
-    log_event daemon.notice \
-        "action=$action result=success state=powered-down reenable=manual"
+    if (( preserve_session )); then
+        log_event daemon.notice \
+            "action=$action result=success state=armed resume=automatic-or-reconnect"
+        notify_state armed
+    else
+        log_event daemon.notice \
+            "action=$action result=success state=powered-down reenable=manual"
+        notify_state disabled
+    fi
 }
 
 disable_thunderbolt() {
@@ -266,6 +338,7 @@ disable_thunderbolt() {
 }
 
 prepare_suspend() {
+    disable_root_port_wake
     teardown_thunderbolt prepare-suspend
 }
 

@@ -8,7 +8,9 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 const CONTROL = '/usr/libexec/silverletter-thunderbolt-control';
+const STATE_FILE = '/run/silverletter/thunderbolt.state';
 const ENABLED_COLOR = '#ed333b';
+const ENABLING_COLOR = '#f6d32d';
 const DISABLED_COLOR = '#ffffff';
 
 const ThunderboltIndicator = GObject.registerClass({
@@ -21,6 +23,9 @@ class ThunderboltIndicator extends PanelMenu.Button {
         this._enabled = false;
         this._busy = false;
         this._destroyed = false;
+        this._refreshing = false;
+        this._refreshPending = false;
+        this._stateMonitor = null;
 
         const iconPath = extension.dir.get_child('icons').get_child('thunderbolt-symbolic.svg').get_path();
         this._icon = new St.Icon({
@@ -41,11 +46,14 @@ class ThunderboltIndicator extends PanelMenu.Button {
         });
         this.menu.addMenuItem(this._instructionItem);
 
-        this._actionItem = new PopupMenu.PopupMenuItem(
-            'Enable Thunderbolt until suspend or reboot'
+        this._experimentalItem = new PopupMenu.PopupMenuItem(
+            'Thunderbolt support is experimental',
+            {
+                reactive: false,
+                can_focus: false,
+            }
         );
-        this._actionItem.connect('activate', () => this._toggleThunderbolt());
-        this.menu.addMenuItem(this._actionItem);
+        this.menu.addMenuItem(this._experimentalItem);
 
         this._warningItem = new PopupMenu.PopupMenuItem(
             'Eject Thunderbolt storage before suspend',
@@ -56,10 +64,27 @@ class ThunderboltIndicator extends PanelMenu.Button {
         );
         this.menu.addMenuItem(this._warningItem);
 
+        this._actionItem = new PopupMenu.PopupMenuItem(
+            'Enable Thunderbolt'
+        );
+        this._actionItem.connect('activate', () => this._toggleThunderbolt());
+        this.menu.addMenuItem(this._actionItem);
+
         this.menu.connect('open-state-changed', (_menu, open) => {
             if (open)
                 this._refresh();
         });
+
+        try {
+            const stateFile = Gio.File.new_for_path(STATE_FILE);
+            this._stateMonitor = stateFile.monitor_file(
+                Gio.FileMonitorFlags.NONE,
+                null
+            );
+            this._stateMonitor.connect('changed', () => this._refresh());
+        } catch (error) {
+            console.error(`Thunderbolt state monitor failed: ${error.message}`);
+        }
 
         this._setState('disabled');
         this._refresh();
@@ -72,15 +97,15 @@ class ThunderboltIndicator extends PanelMenu.Button {
         this._icon.set_style(`color: ${enabled ? ENABLED_COLOR : DISABLED_COLOR};`);
         this._actionItem.label.text = enabled
             ? 'Disable Thunderbolt'
-            : 'Enable Thunderbolt until suspend or reboot';
+            : 'Enable Thunderbolt';
         this._warningItem.visible = enabled;
 
         if (state === 'active') {
-            this._statusItem.label.text = 'Thunderbolt is active until suspend or reboot';
+            this._statusItem.label.text = 'Thunderbolt is Active';
             this._instructionItem.label.text = 'Disable before removing adapter';
             this.accessible_name = 'Thunderbolt active';
         } else if (state === 'armed') {
-            this._statusItem.label.text = 'Thunderbolt is ready until suspend or reboot';
+            this._statusItem.label.text = 'Thunderbolt is ready until disabled or reboot';
             this._instructionItem.label.text = 'Disable before removing adapter';
             this.accessible_name = 'Thunderbolt ready';
         } else {
@@ -94,6 +119,10 @@ class ThunderboltIndicator extends PanelMenu.Button {
         this._busy = busy;
         this._actionItem.setSensitive(!busy);
         if (busy) {
+            this._icon.set_style(`color: ${ENABLING_COLOR};`);
+            this.accessible_name = operation === 'disable'
+                ? 'Thunderbolt disabling'
+                : 'Thunderbolt enabling';
             this._statusItem.label.text = operation === 'disable'
                 ? 'Disabling Thunderbolt…'
                 : 'Enabling Thunderbolt…';
@@ -109,7 +138,7 @@ class ThunderboltIndicator extends PanelMenu.Button {
         );
         this._actionItem.label.text = disabling
             ? 'Disable Thunderbolt'
-            : 'Enable Thunderbolt until suspend or reboot';
+            : 'Enable Thunderbolt';
         this._statusItem.label.text = disabling
             ? 'Thunderbolt could not be disabled'
             : 'Thunderbolt could not be enabled';
@@ -145,7 +174,15 @@ class ThunderboltIndicator extends PanelMenu.Button {
         if (this._busy || this._destroyed)
             return;
 
+        if (this._refreshing) {
+            this._refreshPending = true;
+            return;
+        }
+
+        this._refreshing = true;
+        this._refreshPending = false;
         this._spawn([CONTROL, 'status'], (successful, stdout, stderr) => {
+            this._refreshing = false;
             if (this._destroyed)
                 return;
             if (successful) {
@@ -156,6 +193,9 @@ class ThunderboltIndicator extends PanelMenu.Button {
             }
             else if (stderr)
                 console.error(`Thunderbolt status failed: ${stderr}`);
+
+            if (this._refreshPending)
+                this._refresh();
         });
     }
 
@@ -207,6 +247,8 @@ class ThunderboltIndicator extends PanelMenu.Button {
 
     destroy() {
         this._destroyed = true;
+        this._stateMonitor?.cancel();
+        this._stateMonitor = null;
         super.destroy();
     }
 });
