@@ -20,13 +20,17 @@ This began as a playground for bootc using the excellent [Universal Blue image-t
 - [mbpfan](https://github.com/linux-on-mac/mbpfan) for MacBook fan control
 - [uupd](https://github.com/ublue-os/uupd) automatic system and Flatpak updates, with restart notifications using [uupd Indicator](https://github.com/Vyachean/uupd-indicator)
 - GNOME extensions installed and enabled system-wide: [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/), [Xremap](https://extensions.gnome.org/extension/5060/xremap/), [Vitals](https://extensions.gnome.org/extension/1460/vitals/), [User Themes](https://extensions.gnome.org/extension/19/user-themes/), [Dash to Dock](https://extensions.gnome.org/extension/307/dash-to-dock/),
-- A top-bar Thunderbolt status indicator (to remind you TB is currently in use*)
+- Thunderbolt* can be enabled or disabled via tray icon
 
 ## Optional items
 
 - macOS style keyboard remapping provided by [Toshy](https://github.com/RedBearAK/Toshy)
 - macOS inspired desktop and Firefox theming from [WhiteSur GTK, Shell, and GDM styling](https://github.com/vinceliuice/WhiteSur-gtk-theme) 
 - Setup app that adds/removes these items and can restore the default GNOME Flatpak apps from [Flathub](https://flathub.org/) aswell as replace existing ones with Flathub counterparts (The upstream image exchanges the Fedora flatpak repo for Flathub's) 
+
+## Screenshot
+
+![Silverletter screenshot](assets/screenshot01.jpg)
 
 ## Hardware compatibility
 
