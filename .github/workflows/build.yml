@@ -55,7 +55,7 @@ jobs:
       matrix:
         # Automatic events build x86 only. workflow_dispatch can manually
         # build either x86 or Asahi from the selected branch.
-        variant: ${{ fromJSON(github.event_name == 'workflow_dispatch' && format('["{0}"]', inputs.variant) || '["x86"]') }}
+        variant: ${{ fromJSON(github.event_name == 'workflow_dispatch' && format('["{0}"]', inputs.variant) || github.event_name == 'schedule' && '["x86", "asahi"]' || '["x86"]') }}
 
     permissions:
       contents: read
